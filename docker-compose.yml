@@ -1,0 +1,47 @@
+services:
+  postgres:
+    image: postgres:16-alpine
+    environment:
+      POSTGRES_USER: roundtable
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
+      POSTGRES_DB: roundtable
+    volumes:
+      - pgdata:/var/lib/postgresql/data
+    ports:
+      - "5432:5432"
+
+  app:
+    build:
+      context: .
+      dockerfile: docker/app.Dockerfile
+    environment:
+      DATABASE_URL: postgresql://roundtable:${POSTGRES_PASSWORD}@postgres:5432/roundtable?connection_limit=10
+      DSP_SERVICE_URL: http://dsp:8000
+      ASSEMBLYAI_API_KEY: ${ASSEMBLYAI_API_KEY}
+      GEMINI_API_KEY: ${GEMINI_API_KEY}
+      GROQ_API_KEY: ${GROQ_API_KEY}
+      BETTER_AUTH_SECRET: ${BETTER_AUTH_SECRET}
+      APP_BASE_URL: ${APP_BASE_URL}
+      SEED_ADMIN_EMAIL: ${SEED_ADMIN_EMAIL}
+      SEED_ADMIN_PASSWORD: ${SEED_ADMIN_PASSWORD}
+      INSTITUTION_NAME: ${INSTITUTION_NAME}
+    volumes:
+      - audio_data:/data
+    ports:
+      - "3000:3000"
+    depends_on:
+      - postgres
+      - dsp
+
+  dsp:
+    build:
+      context: .
+      dockerfile: docker/dsp.Dockerfile
+    volumes:
+      - audio_data:/data
+    ports:
+      - "8000:8000"
+
+volumes:
+  pgdata:
+  audio_data:

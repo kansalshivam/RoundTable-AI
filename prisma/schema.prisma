@@ -1,0 +1,219 @@
+generator client {
+  provider = "prisma-client-js"
+  output   = "../app/src/generated/prisma"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+model User {
+  id            String         @id @default(uuid()) @db.Uuid
+  name          String?
+  email         String         @unique
+  emailVerified Boolean        @default(false)
+  image         String?
+  createdAt     DateTime       @default(now())
+  updatedAt     DateTime       @updatedAt
+  profile       AdminProfile?
+  authSessions  BetterAuthSession[]
+  accounts      Account[]
+
+  @@map("user")
+}
+
+model BetterAuthSession {
+  id        String   @id @default(uuid()) @db.Uuid
+  userId    String   @db.Uuid
+  token     String   @unique
+  expiresAt DateTime
+  ipAddress String?
+  userAgent String?
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+  user      User     @relation(fields: [userId], references: [id])
+
+  @@map("session")
+}
+
+model Account {
+  id                    String    @id @default(uuid()) @db.Uuid
+  userId                String    @db.Uuid
+  accountId             String
+  providerId            String
+  accessToken           String?
+  refreshToken          String?
+  idToken               String?
+  accessTokenExpiresAt  DateTime?
+  refreshTokenExpiresAt DateTime?
+  scope                 String?
+  password              String?
+  createdAt             DateTime  @default(now())
+  updatedAt             DateTime  @updatedAt
+  user                  User      @relation(fields: [userId], references: [id])
+
+  @@map("account")
+}
+
+model Verification {
+  id         String   @id @default(uuid()) @db.Uuid
+  identifier String
+  value      String
+  expiresAt  DateTime
+  createdAt  DateTime @default(now())
+  updatedAt  DateTime @updatedAt
+
+  @@map("verification")
+}
+
+model AdminProfile {
+  id              String   @id @db.Uuid
+  full_name       String
+  institution_name String
+  created_at      DateTime @default(now()) @db.Timestamptz(6)
+  user            User     @relation(fields: [id], references: [id])
+  sessions        Session[]
+  consent_records ConsentRecord[]
+
+  @@map("admin_profiles")
+}
+
+model Session {
+  id                           String          @id @default(uuid()) @db.Uuid
+  created_by                   String          @db.Uuid
+  topic                        String
+  scheduled_at                 DateTime?       @db.Timestamptz(6)
+  status                       String          @default("created")
+  audio_local_path             String?
+  recording_source             String          @default("live")
+  original_filename            String?
+  original_format              String?
+  duration_seconds             Int?
+  consent_confirmed            Boolean         @default(false)
+  retain_until                 DateTime?       @db.Timestamptz(6)
+  expected_speaker_count       Int
+  speaker_count_mismatch       Boolean         @default(false)
+  session_waveform_png_path    String?
+  session_spectrogram_png_path String?
+  session_silence_ratio        Decimal?
+  created_at                   DateTime        @default(now()) @db.Timestamptz(6)
+  creator                      AdminProfile    @relation(fields: [created_by], references: [id])
+  participants                 Participant[]
+  utterances                   Utterance[]
+  speech_metrics               SpeechMetric[]
+  scores                       Score[]
+  jobs                         Job[]
+  consent_records              ConsentRecord[]
+
+  @@index([status])
+  @@map("sessions")
+}
+
+model Participant {
+  id            String         @id @default(uuid()) @db.Uuid
+  session_id    String         @db.Uuid
+  display_name  String
+  speaker_label String?
+  created_at    DateTime       @default(now()) @db.Timestamptz(6)
+  session       Session        @relation(fields: [session_id], references: [id])
+  speech_metrics SpeechMetric[]
+  scores        Score[]
+
+  @@map("participants")
+}
+
+model Utterance {
+  id             String   @id @default(uuid()) @db.Uuid
+  session_id     String   @db.Uuid
+  speaker_label  String
+  text           String
+  start_ms       Int
+  end_ms         Int
+  sequence_index Int
+  created_at     DateTime @default(now()) @db.Timestamptz(6)
+  session        Session  @relation(fields: [session_id], references: [id])
+
+  @@index([session_id, sequence_index])
+  @@map("utterances")
+}
+
+model SpeechMetric {
+  id                           String   @id @default(uuid()) @db.Uuid
+  session_id                   String   @db.Uuid
+  participant_id               String   @db.Uuid
+  speaking_time_ms             Int
+  participation_pct            Decimal
+  word_count                   Int
+  wpm                          Decimal
+  filler_count                 Int
+  filler_rate                  Decimal
+  turns_count                  Int
+  avg_turn_ms                  Decimal
+  vocab_mtld_score             Decimal?
+  pitch_mean_hz                Decimal?
+  pitch_range_semitones        Decimal?
+  energy_rms_mean              Decimal?
+  energy_rms_std               Decimal?
+  pause_count                  Int?
+  avg_pause_ms                 Decimal?
+  speaker_waveform_png_path    String?
+  speaker_spectrogram_png_path String?
+  computed_at                  DateTime @default(now()) @db.Timestamptz(6)
+  session                      Session  @relation(fields: [session_id], references: [id])
+  participant                  Participant @relation(fields: [participant_id], references: [id])
+
+  @@unique([session_id, participant_id])
+  @@map("speech_metrics")
+}
+
+model Score {
+  id                                  String   @id @default(uuid()) @db.Uuid
+  session_id                          String   @db.Uuid
+  participant_id                      String   @db.Uuid
+  topic_relevance_score               Int
+  topic_relevance_rationale           String
+  initiative_engagement_score         Int
+  initiative_engagement_rationale     String
+  coherence_structure_score           Int
+  coherence_structure_rationale       String
+  responsiveness_score                Int
+  responsiveness_rationale            String
+  aggregate_score                     Int
+  flagged_low_data                    Boolean  @default(false)
+  communication_summary_strengths     String[]
+  communication_summary_improvements  String[]
+  llm_provider                        String
+  created_at                          DateTime @default(now()) @db.Timestamptz(6)
+  session                             Session  @relation(fields: [session_id], references: [id])
+  participant                         Participant @relation(fields: [participant_id], references: [id])
+
+  @@map("scores")
+}
+
+model Job {
+  id            String   @id @default(uuid()) @db.Uuid
+  session_id    String   @db.Uuid
+  job_type      String
+  status        String   @default("queued")
+  error_message String?
+  attempts      Int      @default(0)
+  created_at    DateTime @default(now()) @db.Timestamptz(6)
+  updated_at    DateTime @default(now()) @updatedAt @db.Timestamptz(6)
+  session       Session  @relation(fields: [session_id], references: [id])
+
+  @@index([status, job_type])
+  @@map("jobs")
+}
+
+model ConsentRecord {
+  id                   String   @id @default(uuid()) @db.Uuid
+  session_id           String   @db.Uuid
+  confirmed_by         String   @db.Uuid
+  consent_text_version String
+  confirmed_at         DateTime @default(now()) @db.Timestamptz(6)
+  session              Session  @relation(fields: [session_id], references: [id])
+  admin                AdminProfile @relation(fields: [confirmed_by], references: [id])
+
+  @@map("consent_records")
+}
