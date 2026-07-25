@@ -1,13 +1,90 @@
 @import "tailwindcss";
 
+@theme {
+  --color-lavender-50: #34235E;
+  --color-lavender-100: #2C1E52;
+  --color-lavender-200: #241947;
+  --color-lavender-300: #3A2A73;
+  --color-lavender-400: #6446B0;
+  --color-lavender-500: #9678E3;
+  --color-lavender-600: #B49BEE;
+  --color-lavender-700: #C7B6F5;
+  --color-lavender-800: #E7DFFC;
+  --color-lavender-900: #FAF8FF;
+
+  --color-canvas: #120B29;
+  --color-surface: #1B1140;
+  --color-n-border: #2E2158;
+  --color-n-text: #F1EDFB;
+  --color-n-muted: #A79FC4;
+
+  --color-mint: #3DE0C0;
+  --color-peach: #FF8A5B;
+  --color-sky: #4FA8FF;
+}
+
 :root {
   font-family: Inter, ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
-  color: #f1f5f9;
-  background: #090d16;
+  color: #F1EDFB;
+  background: #120B29;
   font-synthesis: none;
   text-rendering: optimizeLegibility;
   -webkit-font-smoothing: antialiased;
   -moz-osx-font-smoothing: grayscale;
+
+  /* ── Nebula Dark Token System ── */
+  --color-lavender-50: #34235E;
+  --color-lavender-100: #2C1E52;
+  --color-lavender-200: #241947;
+  --color-lavender-300: #3A2A73;
+  --color-lavender-400: #6446B0;
+  --color-lavender-500: #9678E3;
+  --color-lavender-600: #B49BEE;
+  --color-lavender-700: #C7B6F5;
+  --color-lavender-800: #E7DFFC;
+  --color-lavender-900: #FAF8FF;
+
+  --color-neutral-canvas: #120B29;
+  --color-neutral-surface: #1B1140;
+  --color-neutral-border: #2E2158;
+  --color-neutral-text: #F1EDFB;
+  --color-neutral-text-mut: #A79FC4;
+
+  --color-accent-mint: #3DE0C0;
+  --color-accent-peach: #FF8A5B;
+  --color-accent-sky: #4FA8FF;
+
+  /* ── Elevation & Shadows ── */
+  --shadow-xs: 0 1px 2px rgba(0,0,0,0.30);
+  --shadow-sm: 0 1px 3px rgba(0,0,0,0.35), 0 1px 2px rgba(0,0,0,0.25);
+  --shadow-md: 0 4px 12px rgba(0,0,0,0.40), 0 2px 4px rgba(0,0,0,0.25);
+  --shadow-lg: 0 12px 32px rgba(0,0,0,0.50), 0 4px 8px rgba(0,0,0,0.30);
+  --shadow-glow-lavender: 0 0 40px rgba(150,120,227,0.45);
+  --shadow-inset-soft: inset 0 1px 0 rgba(255,255,255,0.08), inset 0 -1px 0 rgba(0,0,0,0.30);
+
+  /* ── Radius Scale ── */
+  --radius-sm: 8px;
+  --radius-md: 14px;
+  --radius-lg: 22px;
+  --radius-xl: 32px;
+
+  /* ── Legacy token mapping (consumed by existing components) ── */
+  --bg: #120B29;
+  --bg-strong: #160D32;
+  --surface: #1B1140;
+  --surface-soft: #1F1548;
+  --primary: #9678E3;
+  --primary-strong: #B49BEE;
+  --primary-soft: #2C1E52;
+  --accent: #FF8A5B;
+  --accent-soft: #2A1520;
+  --success: #3DE0C0;
+  --warning: #FF8A5B;
+  --text: #F1EDFB;
+  --muted: #A79FC4;
+  --border: #2E2158;
+  --shadow: 0 12px 32px rgba(0,0,0,0.50), 0 4px 8px rgba(0,0,0,0.30);
+  --shadow-soft: 0 4px 12px rgba(0,0,0,0.40), 0 2px 4px rgba(0,0,0,0.25);
 }
 
 * {

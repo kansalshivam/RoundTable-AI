@@ -1,5 +1,23 @@
 # BUILD LOG
 
+## Remediation Pass: Honesty + Light UI Rebuild (2026-07-16T23:55:00+05:30)
+
+- **What was built/fixed:**
+  - Added explicit provenance columns: `sessions.transcription_source` and `scores.is_mock`, with migration `20260716190000_provenance_flags`.
+  - Labeled mock transcript and mock score data in Processing, Signal Lab, Scorecard, and Cohort Dashboard surfaces.
+  - Changed missing dashboard scores from fake `0` values to `null` / "Not yet scored", excluded from averages.
+  - Removed participant display names from the outbound LLM prompt; names are used only in local logs/UI after scoring.
+  - Enforced 3-6 participants server-side and required `expectedSpeakerCount` to match submitted participant names.
+  - Changed session retention default from 14 days to the documented 30 days.
+  - Documented seed-admin environment variables (`SEED_ADMIN_EMAIL`, `SEED_ADMIN_PASSWORD`, `INSTITUTION_NAME`) in the architecture plan.
+  - Rebuilt the frontend toward a light lavender product UI and standardized static icons on `@phosphor-icons/react`; removed `lucide-react`.
+  - Added `DESIGN_SYSTEM.md` with palette, typography, motion, and library-to-screen assignments.
+- **Decision / tier resolution:**
+  - Signal Lab remains present because it already existed before this remediation pass; no further Tier 2 expansion was made before the Tier 1 honesty fixes above.
+- **What was verified in this pass:**
+  - `npm run prisma:generate` succeeded after the schema changes.
+  - Build/lint and repository cleanup results are recorded in the final remediation response.
+
 ## Phase 1: Foundation (Completed 2026-07-15T23:32:00+05:30)
 
 - **What was built:** 

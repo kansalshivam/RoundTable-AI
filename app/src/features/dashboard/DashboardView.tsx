@@ -1,90 +1,75 @@
-import React, { useEffect, useState, useRef } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { motion, useMotionValue, useSpring, useTransform } from "motion/react";
-import { Play, Users, Calendar } from "lucide-react";
+import { CalendarBlank, ChartLineUp, Sparkle, UsersThree, WarningCircle } from "@phosphor-icons/react";
 
-// Motion Primitives Tilt Component (simplified for rows)
-function TiltRow({ children, onClick }: { children: React.ReactNode, onClick?: () => void }) {
+type ParticipantRow = {
+  id: string;
+  display_name: string;
+  score: number | null;
+  is_mock: boolean;
+  sessionTopic: string;
+  sessionId: string;
+  date: string;
+};
+
+function TiltRow({ children, onClick }: { children: React.ReactNode; onClick?: () => void }) {
   const ref = useRef<HTMLTableRowElement>(null);
   const x = useMotionValue(0);
   const y = useMotionValue(0);
-
-  const mouseXSpring = useSpring(x, { stiffness: 300, damping: 30 });
-  const mouseYSpring = useSpring(y, { stiffness: 300, damping: 30 });
-
-  const rotateX = useTransform(mouseYSpring, [-0.5, 0.5], ["2deg", "-2deg"]);
-  const rotateY = useTransform(mouseXSpring, [-0.5, 0.5], ["-2deg", "2deg"]);
-
-  const handleMouseMove = (e: React.MouseEvent<HTMLTableRowElement>) => {
-    if (!ref.current) return;
-    const rect = ref.current.getBoundingClientRect();
-    const width = rect.width;
-    const height = rect.height;
-    const mouseX = e.clientX - rect.left;
-    const mouseY = e.clientY - rect.top;
-    const xPct = mouseX / width - 0.5;
-    const yPct = mouseY / height - 0.5;
-    x.set(xPct);
-    y.set(yPct);
-  };
-
-  const handleMouseLeave = () => {
-    x.set(0);
-    y.set(0);
-  };
+  const mouseXSpring = useSpring(x, { stiffness: 260, damping: 28 });
+  const mouseYSpring = useSpring(y, { stiffness: 260, damping: 28 });
+  const rotateX = useTransform(mouseYSpring, [-0.5, 0.5], ["1.4deg", "-1.4deg"]);
+  const rotateY = useTransform(mouseXSpring, [-0.5, 0.5], ["-1.4deg", "1.4deg"]);
 
   return (
     <motion.tr
       ref={ref}
-      onMouseMove={handleMouseMove}
-      onMouseLeave={handleMouseLeave}
+      onMouseMove={(event) => {
+        if (!ref.current) return;
+        const rect = ref.current.getBoundingClientRect();
+        x.set((event.clientX - rect.left) / rect.width - 0.5);
+        y.set((event.clientY - rect.top) / rect.height - 0.5);
+      }}
+      onMouseLeave={() => {
+        x.set(0);
+        y.set(0);
+      }}
       onClick={onClick}
       style={{ rotateX, rotateY, transformPerspective: 1000 }}
-      className="border-b border-slate-800 hover:bg-slate-800/50 cursor-pointer transition-colors bg-slate-900/60 relative z-10"
-      whileHover={{ scale: 1.01, zIndex: 20, boxShadow: "0px 10px 30px -10px rgba(0,0,0,0.5)" }}
+      whileHover={{ scale: 1.006 }}
+      className="rt-table-row"
     >
       {children}
     </motion.tr>
   );
 }
 
-// React Bits Circular/Horizontal Gallery interpretation
-function SessionGallery({ sessions, onSelect }: { sessions: any[], onSelect: (id: string) => void }) {
+function SessionGallery({ sessions, onSelect }: { sessions: any[]; onSelect: (id: string) => void }) {
   return (
-    <div className="w-full overflow-x-auto pb-8 pt-4" style={{ scrollbarWidth: 'none', msOverflowStyle: 'none' }}>
-      <div className="flex gap-6 px-4" style={{ width: 'max-content' }}>
-        {sessions.map((session) => (
-          <motion.div
-            key={session.id}
-            whileHover={{ scale: 1.05, y: -5 }}
-            whileTap={{ scale: 0.95 }}
-            onClick={() => onSelect(session.id)}
-            className="w-64 h-40 rounded-xl bg-gradient-to-br from-slate-900 to-slate-950 shadow-2xl p-5 flex flex-col justify-between cursor-pointer border border-slate-800 relative overflow-hidden group"
-          >
-            <div className="absolute top-0 right-0 p-4 opacity-10 group-hover:opacity-20 transition-opacity">
-              <Play className="w-16 h-16 text-teal-400" />
-            </div>
-            
-            <div>
-              <div className="text-teal-400 text-xs font-bold uppercase tracking-wider mb-2">
-                {new Date(session.created_at).toLocaleDateString()}
-              </div>
-              <h3 className="text-white font-bold text-lg leading-tight line-clamp-2">
-                {session.topic}
-              </h3>
-            </div>
-            
-            <div className="flex items-center justify-between text-slate-300 text-sm">
-              <div className="flex items-center gap-1.5">
-                <Users className="w-4 h-4 text-slate-400" />
-                <span>{session.participants.length}</span>
-              </div>
-              <div className="font-bold text-teal-400 bg-teal-400/10 px-2 py-0.5 rounded">
-                {session.participants.reduce((acc: number, curr: any) => acc + curr.score, 0) / (session.participants.length || 1)} Avg
-              </div>
-            </div>
-          </motion.div>
-        ))}
-      </div>
+    <div className="session-gallery" aria-label="Session browser">
+      {sessions.map((session) => (
+        <motion.button
+          key={session.id}
+          type="button"
+          whileHover={{ y: -4, scale: 1.015 }}
+          whileTap={{ scale: 0.985 }}
+          onClick={() => onSelect(session.id)}
+          className="session-card"
+        >
+          <span className="soft-icon"><Sparkle size={22} weight="duotone" /></span>
+          <span className="session-date">{new Date(session.created_at).toLocaleDateString()}</span>
+          <strong>{session.topic}</strong>
+          <span className="session-meta">
+            <span><UsersThree size={16} weight="duotone" /> {session.participant_count}</span>
+            <span className={session.average_score === null ? "score-pill muted-pill" : "score-pill"}>
+              {session.average_score === null ? "Not scored" : `${session.average_score} avg`}
+            </span>
+          </span>
+          {session.transcription_source === "mock" && (
+            <span className="notice-pill mock">Synthetic transcript</span>
+          )}
+        </motion.button>
+      ))}
     </div>
   );
 }
@@ -94,61 +79,76 @@ export function DashboardView({ onSelectSession }: { onSelectSession: (id: strin
 
   useEffect(() => {
     fetch("/api/scoring")
-      .then(res => res.json())
-      .then(d => setSessions(d));
+      .then((res) => (res.ok ? res.json() : []))
+      .then((data) => setSessions(Array.isArray(data) ? data : []))
+      .catch(() => setSessions([]));
   }, []);
 
+  const allParticipants = useMemo<ParticipantRow[]>(() => {
+    return sessions
+      .flatMap((session) =>
+        session.participants.map((participant: any) => ({
+          ...participant,
+          sessionTopic: session.topic,
+          sessionId: session.id,
+          date: session.created_at,
+        }))
+      )
+      .sort((a, b) => (b.score ?? -1) - (a.score ?? -1));
+  }, [sessions]);
+
   if (sessions.length === 0) {
-    return <div className="p-12 text-center text-slate-400 font-medium">No completed sessions yet.</div>;
+    return (
+      <section className="rt-page narrow">
+        <div className="empty-state">
+          <span className="soft-icon large"><ChartLineUp size={34} weight="duotone" /></span>
+          <h2>No scored sessions yet</h2>
+          <p>Completed scorecards will appear here after live or clearly labeled demo scoring runs.</p>
+        </div>
+      </section>
+    );
   }
 
-  // Flatten all participants across sessions for the leaderboard
-  const allParticipants = sessions.flatMap(s => 
-    s.participants.map((p: any) => ({
-      ...p,
-      sessionTopic: s.topic,
-      sessionId: s.id,
-      date: s.created_at
-    }))
-  ).sort((a, b) => b.score - a.score);
-
   return (
-    <div className="max-w-6xl mx-auto py-12 px-4 text-white">
-      <div className="mb-8 px-4">
-        <h1 className="text-3xl font-bold text-white mb-2">Cohort Leaderboard</h1>
-        <p className="text-slate-400">Historical performance across all completed GD sessions.</p>
+    <section className="rt-page">
+      <div className="section-heading">
+        <span className="eyebrow">Cohort dashboard</span>
+        <h2>Session browser and leaderboard</h2>
+        <p>Unscored participants are excluded from averages and shown explicitly.</p>
       </div>
 
-      {/* React Bits Gallery */}
       <SessionGallery sessions={sessions} onSelect={onSelectSession} />
 
-      {/* Motion Primitives Tilt Table */}
-      <div className="mt-8 px-4">
-        <h2 className="text-xl font-bold text-white mb-6 flex items-center gap-2">
-          <Calendar className="w-5 h-5 text-teal-400" />
-          Global Leaderboard
-        </h2>
-        
-        <div className="bg-slate-900 rounded-xl shadow-2xl border border-slate-800 overflow-hidden">
-          <table className="w-full text-left">
+      <div className="rt-card table-card">
+        <div className="card-heading">
+          <CalendarBlank size={22} weight="duotone" />
+          <h3>Global leaderboard</h3>
+        </div>
+        <div className="table-wrap">
+          <table className="rt-table">
             <thead>
-              <tr className="border-b border-slate-800 bg-slate-950 text-slate-400 text-sm font-semibold uppercase tracking-wider">
-                <th className="p-4 rounded-tl-xl">Rank</th>
-                <th className="p-4">Student Name</th>
-                <th className="p-4 hidden md:table-cell">Discussion Topic</th>
-                <th className="p-4 text-right rounded-tr-xl">Aggregate Score</th>
+              <tr>
+                <th>Rank</th>
+                <th>Student</th>
+                <th className="hidden-mobile-col">Discussion topic</th>
+                <th>Score state</th>
               </tr>
             </thead>
             <tbody>
-              {allParticipants.map((p, index) => (
-                <TiltRow key={p.id} onClick={() => onSelectSession(p.sessionId)}>
-                  <td className="p-4 text-slate-400 font-medium">{index + 1}</td>
-                  <td className="p-4 font-bold text-white">{p.display_name}</td>
-                  <td className="p-4 text-slate-400 hidden md:table-cell">{p.sessionTopic}</td>
-                  <td className="p-4 text-right">
-                    <span className="inline-block bg-teal-500/10 text-teal-400 font-bold px-3 py-1 rounded-full">
-                      {p.score}
-                    </span>
+              {allParticipants.map((participant, index) => (
+                <TiltRow key={participant.id} onClick={() => onSelectSession(participant.sessionId)}>
+                  <td>{participant.score === null ? "--" : index + 1}</td>
+                  <td><strong>{participant.display_name}</strong></td>
+                  <td className="hidden-mobile-col">{participant.sessionTopic}</td>
+                  <td>
+                    {participant.score === null ? (
+                      <span className="notice-pill neutral">Not yet scored</span>
+                    ) : (
+                      <span className="score-pill">{participant.score}</span>
+                    )}
+                    {participant.is_mock && (
+                      <span className="notice-pill mock inline"><WarningCircle size={14} weight="fill" /> Mock score</span>
+                    )}
                   </td>
                 </TiltRow>
               ))}
@@ -156,7 +156,6 @@ export function DashboardView({ onSelectSession }: { onSelectSession: (id: strin
           </table>
         </div>
       </div>
-
-    </div>
+    </section>
   );
 }

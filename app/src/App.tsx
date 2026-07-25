@@ -8,6 +8,9 @@ import { SpotlightCard } from "./components/ui/SpotlightCard";
 import { StepTracker } from "./components/ui/StepTracker";
 import { AnimatedCheckbox } from "./components/ui/AnimatedCheckbox";
 import { HoverAudioPreview } from "./components/ui/HoverAudioPreview";
+import { Check, Pause, Play, ShieldWarning } from "@phosphor-icons/react";
+import { Tabs } from "@base-ui/react/tabs";
+import { AuroraMesh, CommandDock, CursorHalo, FloatingSparkles, InsightRibbon, NoiseOverlay, SignalLattice } from "./components/ui/PremiumFX";
 import "./App.css";
 
 type SessionState =
@@ -232,6 +235,29 @@ function App() {
     }, 1500);
   }
 
+  async function handleWithdrawConsent() {
+    if (!sessionStatus) return;
+    if (!window.confirm("Are you sure you want to withdraw consent for this session? This will immediately stop processing, delete the audio recording, and reset the session status.")) {
+      return;
+    }
+    try {
+      const response = await fetch(`/api/sessions/${sessionStatus.session.id}/withdraw`, {
+        method: "POST",
+      });
+      if (response.ok) {
+        alert("Consent withdrawn successfully. The recording has been deleted.");
+        setCurrentScreen("dashboard");
+        loadSessionsList();
+      } else {
+        const data = await response.json();
+        alert(`Error: ${data.error || "Failed to withdraw consent"}`);
+      }
+    } catch (e) {
+      console.error(e);
+      alert("An unexpected error occurred while withdrawing consent.");
+    }
+  }
+
   async function handleMappingSubmit(e: FormEvent) {
     e.preventDefault();
     setMappingError("");
@@ -349,14 +375,14 @@ function App() {
 
   const getSpeakerBadgeStyle = (label: string) => {
     const colors: Record<string, { bg: string; color: string }> = {
-      A: { bg: "#e0f2fe", color: "#0369a1" },
-      B: { bg: "#e0e7ff", color: "#4338ca" },
-      C: { bg: "#fef3c7", color: "#b45309" },
-      D: { bg: "#dcfce7", color: "#15803d" },
-      E: { bg: "#fce7f3", color: "#be185d" },
-      F: { bg: "#f3e8ff", color: "#7e22ce" },
+      A: { bg: "rgba(79,168,255,0.15)", color: "#4FA8FF" },
+      B: { bg: "rgba(150,120,227,0.15)", color: "#B49BEE" },
+      C: { bg: "rgba(255,138,91,0.15)", color: "#FF8A5B" },
+      D: { bg: "rgba(61,224,192,0.15)", color: "#3DE0C0" },
+      E: { bg: "rgba(199,182,245,0.15)", color: "#C7B6F5" },
+      F: { bg: "rgba(100,70,176,0.15)", color: "#6446B0" },
     };
-    return colors[label] || { bg: "#f1f5f9", color: "#475569" };
+    return colors[label] || { bg: "rgba(46,33,88,0.4)", color: "#A79FC4" };
   };
 
   const getSpeakerName = (label: string) => {
@@ -371,36 +397,42 @@ function App() {
 
   if (sessionState.status === "anonymous") {
     return (
-      <main className="relative min-h-screen flex items-center justify-center bg-slate-950">
+      <main className="relative min-h-screen flex items-center justify-center px-4" style={{ background: 'var(--bg)' }}>
+        <AuroraMesh />
+        <FloatingSparkles />
+        <NoiseOverlay />
         <InteractiveGrid />
-        <section className="relative z-10 w-full max-w-md p-8 bg-slate-900/80 backdrop-blur-md rounded-2xl border border-slate-800 shadow-2xl">
+        <section className="relative z-10 w-full max-w-md p-6 sm:p-8 rounded-2xl" style={{ background: 'rgba(27,17,64,0.72)', backdropFilter: 'blur(20px) saturate(160%)', border: '1px solid rgba(46,33,88,0.6)', borderTopColor: 'rgba(150,120,227,0.18)', boxShadow: '0 12px 32px rgba(0,0,0,0.50), 0 4px 8px rgba(0,0,0,0.30)' }}>
           <div className="mb-8">
-            <p className="text-teal-400 font-semibold text-sm mb-2 tracking-wide uppercase">RoundTable AI</p>
-            <h1 className="text-3xl font-bold text-white mb-2">Admin login</h1>
-            <p className="text-slate-400">Sign in to open the local speech analytics dashboard.</p>
+            <p className="font-semibold text-sm mb-2 tracking-wide uppercase" style={{ color: 'var(--color-lavender-600)' }}>RoundTable AI</p>
+            <h1 className="text-3xl font-bold mb-2" style={{ color: 'var(--color-lavender-800)' }}>Admin login</h1>
+            <p style={{ color: 'var(--muted)' }}>Sign in to open the local speech analytics dashboard.</p>
           </div>
           <form onSubmit={handleLogin} className="flex flex-col space-y-4">
-            <label className="flex flex-col space-y-1 text-sm font-medium text-slate-300">
+            <label className="flex flex-col space-y-1 text-sm font-medium" style={{ color: 'var(--text)' }}>
               Email
               <input 
-                className="px-4 py-2 bg-slate-800 border border-slate-700 rounded-lg text-white focus:outline-none focus:ring-2 focus:ring-teal-500 focus:border-transparent transition-all"
+                className="px-4 py-2 rounded-lg transition-all"
+                style={{ background: 'rgba(18,11,41,0.7)', border: '1px solid var(--border)', color: 'var(--text)' }}
                 value={email} 
                 onChange={(event) => setEmail(event.target.value)} 
               />
             </label>
-            <label className="flex flex-col space-y-1 text-sm font-medium text-slate-300">
+            <label className="flex flex-col space-y-1 text-sm font-medium" style={{ color: 'var(--text)' }}>
               Password
               <input
-                className="px-4 py-2 bg-slate-800 border border-slate-700 rounded-lg text-white focus:outline-none focus:ring-2 focus:ring-teal-500 focus:border-transparent transition-all"
+                className="px-4 py-2 rounded-lg transition-all"
+                style={{ background: 'rgba(18,11,41,0.7)', border: '1px solid var(--border)', color: 'var(--text)' }}
                 type="password"
                 value={password}
                 onChange={(event) => setPassword(event.target.value)}
               />
             </label>
-            {error ? <p className="text-red-400 text-sm mt-2">{error}</p> : null}
+            {error ? <p className="text-sm mt-2" style={{ color: 'var(--color-accent-peach)' }}>{error}</p> : null}
             <button 
               type="submit" 
-              className="mt-6 w-full py-2.5 bg-teal-600 hover:bg-teal-500 text-white font-semibold rounded-lg transition-colors shadow-[0_0_15px_rgba(13,148,136,0.4)]"
+              className="mt-6 w-full py-2.5 font-semibold rounded-lg transition-colors"
+              style={{ background: 'linear-gradient(135deg, #9678E3, #6446B0)', color: '#FAF8FF', boxShadow: '0 0 25px rgba(150,120,227,0.40)' }}
             >
               Sign in
             </button>
@@ -412,6 +444,9 @@ function App() {
 
   return (
     <main className="app-shell">
+      <AuroraMesh />
+      <NoiseOverlay />
+      <CursorHalo />
       <header className="topbar">
         <div>
           <p className="eyebrow" style={{ cursor: "pointer" }} onClick={() => setCurrentScreen("dashboard")}>
@@ -428,45 +463,50 @@ function App() {
               ? "Speech Signal Lab"
               : currentScreen === "scorecard"
               ? "Session Scorecard"
-              : currentScreen === "cohort-dashboard"
+               : currentScreen === "cohort-dashboard"
               ? "Cohort Dashboard"
               : "Session Processing Engine"}
           </h1>
         </div>
-        <div style={{ display: "flex", gap: "10px" }}>
+        <CommandDock
+          onDashboard={() => setCurrentScreen("dashboard")}
+          onCohort={() => setCurrentScreen("cohort-dashboard")}
+          onNewSession={() => { setError(""); setTopic(""); setAgeConfirmed(false); setCurrentScreen("setup"); }}
+        />
+        <div className="flex flex-col sm:flex-row gap-2 w-full sm:w-auto">
           {currentScreen === "dashboard" && (
             <>
-              <button type="button" onClick={() => setCurrentScreen("cohort-dashboard")} className="secondary" style={{ background: "#f1f5f9", color: "#334155", border: "1px solid #cbd5e1" }}>
+              <button type="button" onClick={() => setCurrentScreen("cohort-dashboard")} className="secondary w-full sm:w-auto text-xs sm:text-sm" style={{ background: "#f1f5f9", color: "#334155", border: "1px solid #cbd5e1" }}>
                 Cohort Leaderboard
               </button>
-              <button type="button" onClick={() => { setError(""); setTopic(""); setAgeConfirmed(false); setCurrentScreen("setup"); }}>
+              <button type="button" onClick={() => { setError(""); setTopic(""); setAgeConfirmed(false); setCurrentScreen("setup"); }} className="w-full sm:w-auto text-xs sm:text-sm">
                 Schedule Session
               </button>
             </>
           )}
           {currentScreen === "cohort-dashboard" && (
-            <button type="button" onClick={() => setCurrentScreen("dashboard")} className="secondary">
+            <button type="button" onClick={() => setCurrentScreen("dashboard")} className="secondary w-full sm:w-auto text-xs sm:text-sm">
               Active Sessions
             </button>
           )}
-          <button type="button" onClick={handleLogout} className="secondary">
+          <button type="button" onClick={handleLogout} className="secondary w-full sm:w-auto text-xs sm:text-sm">
             Sign out
           </button>
         </div>
       </header>
 
       {currentScreen === "dashboard" && (
-        <section className="max-w-6xl mx-auto w-full mt-8">
-          <SpotlightCard className="p-8">
-            <div className="flex justify-between items-center mb-6 border-b border-slate-800 pb-4">
+        <section className="max-w-6xl mx-auto w-full mt-8 px-4 sm:px-6">
+          <SpotlightCard className="p-6 sm:p-8">
+            <div className="flex flex-col sm:flex-row sm:justify-between sm:items-center gap-4 mb-6 border-b border-slate-800 pb-4">
               <div>
-                <h2 className="text-2xl font-bold text-white">Active Assessment Sessions</h2>
-                <p className="text-slate-400 text-sm">Real-time signal processing and session scoring tracker.</p>
+                <h2 className="text-xl sm:text-2xl font-bold text-white">Active Assessment Sessions</h2>
+                <p className="text-slate-400 text-xs sm:text-sm">Pipeline status and session scoring tracker.</p>
               </div>
               <button 
                 type="button" 
                 onClick={loadSessionsList} 
-                className="px-4 py-2 bg-slate-800 hover:bg-slate-700 text-white font-medium rounded-lg transition-colors border border-slate-700"
+                className="px-4 py-2 bg-slate-800 hover:bg-slate-700 text-white font-medium rounded-lg transition-colors border border-slate-700 w-full sm:w-auto"
               >
                 Refresh
               </button>
@@ -474,25 +514,33 @@ function App() {
             {sessions.length === 0 ? (
               <p className="text-slate-400 py-8 text-center font-medium">No sessions created yet. Click "Schedule Session" to get started.</p>
             ) : (
+              <>
+              <InsightRibbon
+                items={[
+                  { label: "Sessions", value: String(sessions.length), tone: "live" },
+                  { label: "Complete", value: String(sessions.filter((s) => s.status === "complete").length), tone: "neutral" },
+                  { label: "In flight", value: String(sessions.filter((s) => s.status !== "complete" && s.status !== "failed").length), tone: "mock" },
+                ]}
+              />
               <div className="overflow-x-auto">
                 <table className="w-full text-left border-collapse">
                   <thead>
-                    <tr className="border-b border-slate-800 text-slate-400 text-sm font-semibold uppercase tracking-wider">
+                    <tr className="border-b border-slate-800 text-slate-400 text-xs sm:text-sm font-semibold uppercase tracking-wider">
                       <th className="py-4 px-2">Topic</th>
                       <th className="py-4 px-2">Speakers</th>
                       <th className="py-4 px-2">Status</th>
-                      <th className="py-4 px-2">Source</th>
-                      <th className="py-4 px-2">Duration</th>
+                      <th className="py-4 px-2 hidden sm:table-cell">Source</th>
+                      <th className="py-4 px-2 hidden sm:table-cell">Duration</th>
                       <th className="py-4 px-2 text-right">Actions</th>
                     </tr>
                   </thead>
                   <tbody>
                     {sessions.map((s) => (
-                      <tr key={s.id} className="border-b border-slate-800 hover:bg-slate-800/40 transition-colors text-slate-300">
+                      <tr key={s.id} className="border-b border-slate-800 hover:bg-slate-800/40 transition-colors text-slate-300 text-sm">
                         <td className="py-4 px-2 font-semibold text-white">{s.topic}</td>
                         <td className="py-4 px-2">{s.expected_speaker_count} participants</td>
                         <td className="py-4 px-2">
-                          <span className={`inline-block px-2.5 py-1 rounded-full text-xs font-semibold uppercase tracking-wider border ${
+                          <span className={`inline-block px-2 py-0.5 rounded-full text-[10px] font-semibold uppercase tracking-wider border ${
                             s.status === "complete" 
                               ? "bg-teal-500/10 text-teal-400 border-teal-500/20" 
                               : s.status === "failed" 
@@ -502,8 +550,8 @@ function App() {
                             {s.status}
                           </span>
                         </td>
-                        <td className="py-4 px-2 capitalize">{s.recording_source}</td>
-                        <td className="py-4 px-2">{s.duration_seconds ? `${s.duration_seconds}s` : "--"}</td>
+                        <td className="py-4 px-2 capitalize hidden sm:table-cell">{s.recording_source}</td>
+                        <td className="py-4 px-2 hidden sm:table-cell">{s.duration_seconds ? `${s.duration_seconds}s` : "--"}</td>
                         <td className="py-4 px-2 text-right">
                           <div className="flex justify-end gap-2">
                             {s.status === "complete" || s.status === "scoring" ? (
@@ -546,13 +594,14 @@ function App() {
                   </tbody>
                 </table>
               </div>
+              </>
             )}
           </SpotlightCard>
         </section>
       )}
 
       {currentScreen === "setup" && (
-        <section className="max-w-4xl mx-auto w-full grid grid-cols-1 md:grid-cols-[250px_1fr] gap-8 mt-8">
+        <section className="max-w-4xl mx-auto w-full grid grid-cols-1 md:grid-cols-[250px_1fr] gap-8 mt-8 px-4 sm:px-6">
           {/* Sidebar Tracker */}
           <div className="hidden md:block">
             <StepTracker 
@@ -566,7 +615,7 @@ function App() {
           </div>
 
           {/* Main Form */}
-          <SpotlightCard className="p-8">
+          <SpotlightCard className="p-6 sm:p-8">
             <form onSubmit={handleSetupSubmit} className="flex flex-col space-y-6">
               <div>
                 <h2 className="text-2xl font-bold text-white mb-2">Create Assessment Session</h2>
@@ -630,11 +679,11 @@ function App() {
 
               {error ? <p className="text-red-400 text-sm">{error}</p> : null}
 
-              <div className="flex gap-4 pt-4">
-                <button type="submit" className="flex-1 py-2.5 bg-teal-600 hover:bg-teal-500 text-white font-semibold rounded-lg transition-colors shadow-[0_0_15px_rgba(13,148,136,0.3)]">
+              <div className="flex flex-col sm:flex-row gap-3 sm:gap-4 pt-4">
+                <button type="submit" className="flex-1 py-2.5 bg-teal-600 hover:bg-teal-500 text-white font-semibold rounded-lg transition-colors shadow-[0_0_15px_rgba(13,148,136,0.3)] w-full">
                   Next: Consent & Recording
                 </button>
-                <button type="button" onClick={() => setCurrentScreen("dashboard")} className="px-6 py-2.5 bg-slate-800 hover:bg-slate-700 text-white font-medium rounded-lg transition-colors">
+                <button type="button" onClick={() => setCurrentScreen("dashboard")} className="px-6 py-2.5 bg-slate-800 hover:bg-slate-700 text-white font-medium rounded-lg transition-colors w-full sm:w-auto">
                   Cancel
                 </button>
               </div>
@@ -644,7 +693,7 @@ function App() {
       )}
 
       {currentScreen === "record-upload" && (
-        <section className="max-w-4xl mx-auto w-full grid grid-cols-1 md:grid-cols-[250px_1fr] gap-8 mt-8">
+        <section className="max-w-4xl mx-auto w-full grid grid-cols-1 md:grid-cols-[250px_1fr] gap-8 mt-8 px-4 sm:px-6">
           <div className="hidden md:block">
             <StepTracker 
               steps={[
@@ -656,19 +705,17 @@ function App() {
             />
           </div>
 
-          <SpotlightCard className="p-8">
+          <SpotlightCard className="p-6 sm:p-8">
             <div className="flex flex-col space-y-6">
               <div>
                 <h2 className="text-2xl font-bold text-white mb-2">Step 2: Consent and Recording</h2>
                 <p className="text-slate-400 text-sm">Review consent requirements and provide the audio source.</p>
               </div>
               
-              <div className="bg-slate-950/50 border border-slate-700/50 p-4 rounded-xl">
-                <h3 className="text-white font-semibold mb-2">Participant Consent Affirmation</h3>
-                <p className="text-slate-400 text-sm leading-relaxed">
-                  By checking the box below, you certify that all participants in this group discussion have signed the physically printed or digital institutional consent form allowing their voice signals to be recorded, transcoded, and analyzed.
-                </p>
-              </div>
+                <div className="text-slate-400 text-sm leading-relaxed consent-copy space-y-3">
+                  <p>By checking the box below, you certify that all participants in this group discussion have agreed to the following consent terms:</p>
+                  <p className="pl-4 border-l-2 border-slate-700 italic">This group discussion will be audio-recorded for the purpose of academic/placement assessment. The recording will be processed using a third-party AI service, AssemblyAI, for transcription and speaker separation (on AssemblyAI's free tier, submitted audio may be used, after automated removal of personally identifying information, to help improve AssemblyAI's speech models, as AssemblyAI's free tier does not currently offer an opt-out from this). A second third-party service, Google Gemini (with Groq as a technical fallback), is used to generate a relevance-based scorecard and a plain-language communication summary from the anonymized transcript text only — student names are never sent to either LLM service. Separately, the platform analyzes acoustic properties of the recording itself (pitch, loudness, pauses) using software that runs locally and does not send audio to any third party for this specific analysis. These acoustic measurements describe vocal signal properties only — they are not used to infer emotion, confidence, or any psychological trait. The resulting scorecard is reviewed by the institution's placement/admissions team. Recordings are retained for 30 days after scoring is confirmed, after which the raw audio is deleted; anonymized transcripts, scores, and analytics may be retained longer for record-keeping. You may withdraw consent at any time before your session is scored by informing the evaluator, in which case your recording will not be processed and will be deleted. If any participant is under 18, separate parental/guardian consent is required before this session can proceed.</p>
+                </div>
 
               <div className="py-2">
                 <AnimatedCheckbox 
@@ -680,26 +727,20 @@ function App() {
 
               {consentConfirmed && (
                 <div className="pt-6 border-t border-slate-800 space-y-6">
-                  <div className="flex p-1 bg-slate-900 rounded-lg border border-slate-700 w-full max-w-sm mx-auto">
-                    <button
-                      type="button"
-                      onClick={() => { setUploadTab("record"); setUploadError(""); }}
-                      className={`flex-1 py-2 text-sm font-medium rounded-md transition-all ${
-                        uploadTab === "record" ? "bg-slate-700 text-white shadow-sm" : "text-slate-400 hover:text-slate-200"
-                      }`}
-                    >
-                      Record Live
-                    </button>
-                    <button
-                      type="button"
-                      onClick={() => { setUploadTab("upload"); setUploadError(""); }}
-                      className={`flex-1 py-2 text-sm font-medium rounded-md transition-all ${
-                        uploadTab === "upload" ? "bg-slate-700 text-white shadow-sm" : "text-slate-400 hover:text-slate-200"
-                      }`}
-                    >
-                      Upload Recording
-                    </button>
-                  </div>
+                  <Tabs.Root
+                    value={uploadTab}
+                    onValueChange={(value) => {
+                      setUploadTab(value as "record" | "upload");
+                      setUploadError("");
+                    }}
+                    className="premium-tabs"
+                  >
+                    <Tabs.List className="premium-tabs-list">
+                      <Tabs.Tab value="record" className="premium-tab">Record Live</Tabs.Tab>
+                      <Tabs.Tab value="upload" className="premium-tab">Upload Recording</Tabs.Tab>
+                      <Tabs.Indicator className="premium-tab-indicator" />
+                    </Tabs.List>
+                  </Tabs.Root>
 
                   {uploadTab === "record" ? (
                     <RecordingWidget onStop={(blob) => handleConsentAndUpload(blob, "live")} />
@@ -754,20 +795,31 @@ function App() {
       )}
 
       {currentScreen === "processing" && (
-        <section className="max-w-4xl mx-auto w-full mt-8">
-          <SpotlightCard className="p-8">
-            <div className="flex justify-between items-center mb-8 border-b border-slate-800 pb-4">
+        <section className="max-w-4xl mx-auto w-full mt-8 px-4 sm:px-6">
+          <SpotlightCard className="p-6 sm:p-8">
+            <div className="flex flex-col sm:flex-row sm:justify-between sm:items-center gap-4 mb-8 border-b border-slate-800 pb-4">
               <div>
-                <h2 className="text-2xl font-bold text-white">Assessment Processing Engine</h2>
-                <p className="text-slate-400 text-sm">Real-time pipeline status and manual mapping.</p>
+                <h2 className="text-xl sm:text-2xl font-bold text-white">Assessment Processing Engine</h2>
+                <p className="text-slate-400 text-xs sm:text-sm">Pipeline status and manual mapping.</p>
               </div>
-              <button 
-                type="button" 
-                onClick={() => { setCurrentScreen("dashboard"); loadSessionsList(); }} 
-                className="px-4 py-2 bg-slate-800 hover:bg-slate-700 text-white font-medium rounded-lg transition-colors"
-              >
-                Back to Dashboard
-              </button>
+              <div className="flex flex-col sm:flex-row gap-2 w-full sm:w-auto">
+                {sessionStatus && sessionStatus.session.status !== "complete" && sessionStatus.session.status !== "scoring" && (
+                  <button 
+                    type="button" 
+                    onClick={handleWithdrawConsent} 
+                    className="px-4 py-2 bg-red-950/60 hover:bg-red-950/80 text-red-200 border border-red-900/50 font-medium rounded-lg transition-colors w-full sm:w-auto"
+                  >
+                    Withdraw Consent
+                  </button>
+                )}
+                <button 
+                  type="button" 
+                  onClick={() => { setCurrentScreen("dashboard"); loadSessionsList(); }} 
+                  className="px-4 py-2 bg-slate-800 hover:bg-slate-700 text-white font-medium rounded-lg transition-colors w-full sm:w-auto"
+                >
+                  Back to Dashboard
+                </button>
+              </div>
             </div>
 
             {sessionStatus ? (
@@ -779,6 +831,9 @@ function App() {
                   <div className="flex space-x-4 text-sm text-slate-400">
                     <span className="flex items-center"><strong className="text-slate-300 mr-1">Speakers:</strong> {sessionStatus.session.expected_speaker_count}</span>
                     <span className="flex items-center"><strong className="text-slate-300 mr-1">Source:</strong> <span className="capitalize">{sessionStatus.session.recording_source}</span></span>
+                    {sessionStatus.session.transcription_source === "mock" && (
+                      <span className="notice-pill mock"><ShieldWarning size={14} weight="fill" /> Synthetic/demo transcript</span>
+                    )}
                   </div>
                 </div>
 
@@ -827,19 +882,17 @@ function App() {
                       const isCompleted = currentIdx > myIdx;
 
                       return (
-                        <div key={step.id} className="flex flex-col items-center bg-slate-900 px-2 group">
+                        <div key={step.id} className="flex flex-col items-center bg-slate-900 px-1 sm:px-2 group">
                           <div className={`w-8 h-8 rounded-full border-2 flex items-center justify-center transition-all duration-500 ${
                             isCompleted ? "bg-teal-500 border-teal-500" : isActive ? "bg-slate-800 border-teal-400 shadow-[0_0_15px_rgba(45,212,191,0.3)] animate-pulse" : "bg-slate-900 border-slate-700"
                           }`}>
                             {isCompleted ? (
-                              <svg className="w-4 h-4 text-white" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={3} d="M5 13l4 4L19 7" />
-                              </svg>
+                              <Check size={16} weight="bold" color="white" />
                             ) : (
                               <span className={`text-xs font-bold ${isActive ? "text-teal-400" : "text-slate-500"}`}>{idx + 1}</span>
                             )}
                           </div>
-                          <span className={`text-xs font-medium mt-2 transition-colors ${
+                          <span className={`text-[10px] sm:text-xs font-medium mt-2 transition-colors text-center max-w-[55px] sm:max-w-none leading-tight ${
                             isActive ? "text-teal-400" : isCompleted ? "text-slate-300" : "text-slate-500"
                           }`}>
                             {step.label}
@@ -853,6 +906,7 @@ function App() {
                 {/* Processing State Messaging */}
                 {(sessionStatus.session.status === "transcribing" || sessionStatus.session.status === "uploaded") && (
                   <div className="text-center py-12">
+                    <SignalLattice active />
                     <div className="inline-block w-12 h-12 border-4 border-teal-500/20 border-t-teal-500 rounded-full animate-spin mb-4" />
                     <p className="font-bold text-white text-lg">Transcribing Audio & Identifying Speakers</p>
                     <p className="text-slate-400 text-sm mt-2">Diarization models are mapping unique voice signatures...</p>
@@ -871,7 +925,7 @@ function App() {
                   <div className="text-center py-12">
                     <div className="inline-block w-12 h-12 border-4 border-blue-500/20 border-t-blue-500 rounded-full animate-spin mb-4" />
                     <p className="font-bold text-white text-lg">Generating Rubric Scores</p>
-                    <p className="text-slate-400 text-sm mt-2">LLMs are evaluating coherence, relevance, and initiative...</p>
+                    <p className="text-slate-400 text-sm mt-2">Waiting for live scoring, or creating visibly labeled demo scores when keys are absent...</p>
                   </div>
                 )}
 
@@ -925,9 +979,7 @@ function App() {
                 {sessionStatus.session.status === "complete" && (
                   <div className="text-center py-10 bg-gradient-to-b from-teal-900/20 to-slate-900 rounded-2xl border border-teal-900/50">
                     <div className="w-16 h-16 bg-teal-500 rounded-full flex items-center justify-center mx-auto mb-4 shadow-[0_0_30px_rgba(20,184,166,0.5)]">
-                      <svg className="w-8 h-8 text-white" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={3} d="M5 13l4 4L19 7" />
-                      </svg>
+                      <Check size={32} weight="bold" color="white" />
                     </div>
                     <p className="text-2xl font-bold text-white mb-2">Evaluation Completed!</p>
                     <p className="text-slate-400 mb-8">All speech metrics and qualitative scores are ready.</p>
@@ -961,18 +1013,25 @@ function App() {
       )}
 
       {currentScreen === "signal-lab" && (
-        <section style={{ maxWidth: "1200px", margin: "0 auto" }}>
+        <section className="max-w-6xl mx-auto w-full mt-8 px-4 sm:px-6">
           <div className="panel" style={{ display: "grid", gap: "25px" }}>
-            <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
+            <div className="flex flex-col sm:flex-row sm:justify-between sm:items-center gap-4">
               <div>
-                <h2>Speech Signal Exploration Lab</h2>
+                <h2 className="text-xl sm:text-2xl font-bold text-white">Speech Signal Exploration Lab</h2>
                 {sessionStatus && (
                   <p className="muted" style={{ fontSize: "0.9rem", marginTop: "4px" }}>
                     Topic: <strong>{sessionStatus.session.topic}</strong> | Expected Speakers: {sessionStatus.session.expected_speaker_count}
                   </p>
                 )}
+                {sessionStatus?.session.transcription_source === "mock" && (
+                  <div className="mock-banner compact" style={{ marginTop: "12px" }}>
+                    <ShieldWarning size={20} weight="fill" />
+                    <strong>Synthetic/demo transcript</strong>
+                    <span>Transcript-derived segments came from the mock transcription path.</span>
+                  </div>
+                )}
               </div>
-              <button type="button" onClick={() => { setCurrentScreen("dashboard"); loadSessionsList(); }} className="secondary">
+              <button type="button" onClick={() => { setCurrentScreen("dashboard"); loadSessionsList(); }} className="secondary w-full sm:w-auto">
                 Back to Dashboard
               </button>
             </div>
@@ -984,7 +1043,7 @@ function App() {
                   
                   {/* Waveform timeline */}
                   <div>
-                    <h4 className="font-bold text-slate-200 mb-2">Full-Session Waveform</h4>
+                    <h4 className="font-bold mb-2" style={{ color: 'var(--text)' }}>Full-Session Waveform</h4>
                     <SpotlightCard className="p-0 border border-slate-700">
                       <div 
                         className="relative w-full h-auto cursor-crosshair overflow-hidden group" 
@@ -995,14 +1054,14 @@ function App() {
                           src={`/api/sessions/${activeSessionId}/plots/waveform?t=${Date.now()}`} 
                           alt="Waveform plot" 
                         />
-                        <div className="absolute top-0 bottom-0 w-px bg-teal-400 shadow-[0_0_10px_rgba(45,212,191,0.8)] pointer-events-none transition-all duration-100" style={{ left: `${playbackProgress}%` }} />
+                        <div className="absolute top-0 bottom-0 w-px pointer-events-none transition-all duration-100" style={{ left: `${playbackProgress}%`, background: 'var(--color-lavender-500)', boxShadow: '0 0 12px rgba(150,120,227,0.8)' }} />
                       </div>
                     </SpotlightCard>
                   </div>
 
                   {/* Spectrogram timeline */}
                   <div>
-                    <h4 className="font-bold text-slate-200 mb-2 mt-4">Log-Frequency Spectrogram</h4>
+                    <h4 className="font-bold mb-2 mt-4" style={{ color: 'var(--text)' }}>Log-Frequency Spectrogram</h4>
                     <SpotlightCard className="p-0 border border-slate-700">
                       <div 
                         className="relative w-full h-auto cursor-crosshair overflow-hidden group" 
@@ -1013,18 +1072,18 @@ function App() {
                           src={`/api/sessions/${activeSessionId}/plots/spectrogram?t=${Date.now()}`} 
                           alt="Spectrogram plot" 
                         />
-                        <div className="absolute top-0 bottom-0 w-px bg-teal-400 shadow-[0_0_10px_rgba(45,212,191,0.8)] pointer-events-none transition-all duration-100" style={{ left: `${playbackProgress}%` }} />
+                        <div className="absolute top-0 bottom-0 w-px pointer-events-none transition-all duration-100" style={{ left: `${playbackProgress}%`, background: 'var(--color-lavender-500)', boxShadow: '0 0 12px rgba(150,120,227,0.8)' }} />
                       </div>
                     </SpotlightCard>
                   </div>
 
                   {/* HTML5 Audio Player control block */}
-                  <div style={{ background: "#f8fafc", border: "1px solid #e2e8f0", padding: "15px", borderRadius: "8px", display: "grid", gap: "10px" }}>
+                  <div style={{ background: "rgba(27,17,64,0.65)", border: "1px solid var(--border)", padding: "15px", borderRadius: "14px", display: "grid", gap: "10px", backdropFilter: "blur(8px)" }}>
                     <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
-                      <button type="button" onClick={handleAudioPlayPause} style={{ minWidth: "120px", background: "#245c67" }}>
-                        {isPlaying ? "Pause ⏸" : "Play ▶"}
+                      <button type="button" onClick={handleAudioPlayPause} style={{ minWidth: "120px" }}>
+                        {isPlaying ? <><Pause size={16} weight="fill" /> Pause</> : <><Play size={16} weight="fill" /> Play</>}
                       </button>
-                      <span style={{ fontWeight: "bold", fontFamily: "monospace", fontSize: "1.1rem" }}>
+                      <span style={{ fontWeight: "bold", fontFamily: "monospace", fontSize: "1.1rem", color: "var(--color-lavender-700)" }}>
                         {formatTime(playbackTime)} / {formatTime(playbackDuration)}
                       </span>
                     </div>
@@ -1041,7 +1100,7 @@ function App() {
 
                   {/* Interactive transcript section */}
                   <div>
-                    <h3 style={{ marginBottom: "12px", color: "#1e293b" }}>Session Transcript (Click to Seek)</h3>
+                    <h3 style={{ marginBottom: "12px", color: "var(--text)" }}>Session Transcript (Click to Seek)</h3>
                     <div className="transcript-list">
                       {sessionStatus.session.utterances && sessionStatus.session.utterances.length > 0 ? (
                         sessionStatus.session.utterances.map((u: any) => {
@@ -1052,16 +1111,18 @@ function App() {
                               className="transcript-item"
                               onClick={() => handleUtteranceClick(u.start_ms)}
                             >
-                              <div
-                                className="speaker-badge-tag"
-                                style={{ background: badge.bg, color: badge.color }}
-                              >
-                                {getSpeakerName(u.speaker_label)}
+                              <div className="transcript-item-meta">
+                                <div
+                                  className="speaker-badge-tag text-center"
+                                  style={{ background: badge.bg, color: badge.color }}
+                                >
+                                  {getSpeakerName(u.speaker_label)}
+                                </div>
+                                <div style={{ color: "var(--muted)", fontSize: "0.85rem", fontFamily: "monospace", minWidth: "90px" }}>
+                                  [{formatUtteranceTime(u.start_ms)} - {formatUtteranceTime(u.end_ms)}]
+                                </div>
                               </div>
-                              <div style={{ color: "#64748b", fontSize: "0.85rem", fontFamily: "monospace", minWidth: "90px" }}>
-                                [{formatUtteranceTime(u.start_ms)} - {formatUtteranceTime(u.end_ms)}]
-                              </div>
-                              <div style={{ color: "#1e293b", fontSize: "0.95rem", flex: 1 }}>
+                              <div className="transcript-item-text" style={{ color: "var(--text)", fontSize: "0.95rem" }}>
                                 {u.text}
                               </div>
                             </div>
@@ -1076,7 +1137,7 @@ function App() {
 
                 {/* Metrics Sidebar column */}
                 <div className="metrics-sidebar">
-                  <h3 style={{ color: "#1e293b" }}>Participant Analytics</h3>
+                  <h3 style={{ color: "var(--text)" }}>Participant Analytics</h3>
                   {sessionStatus.session.speech_metrics && sessionStatus.session.speech_metrics.length > 0 ? (
                     sessionStatus.session.speech_metrics.map((m: any) => {
                       const badge = getSpeakerBadgeStyle(m.participant.speaker_label || "A");

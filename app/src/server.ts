@@ -134,6 +134,19 @@ app.post("/api/sessions", requireAuth, async (req, res) => {
     return;
   }
 
+  const cleanParticipants = participants.map((name) => name.trim()).filter(Boolean);
+  if (
+    !Number.isInteger(expectedSpeakerCount) ||
+    expectedSpeakerCount < 3 ||
+    expectedSpeakerCount > 6 ||
+    cleanParticipants.length < 3 ||
+    cleanParticipants.length > 6 ||
+    cleanParticipants.length !== expectedSpeakerCount
+  ) {
+    res.status(400).json({ error: "participant_count_must_be_3_to_6_and_match_expected_speaker_count" });
+    return;
+  }
+
   const adminId = (req as any).admin.id;
 
   try {
@@ -145,12 +158,12 @@ app.post("/api/sessions", requireAuth, async (req, res) => {
           expected_speaker_count: expectedSpeakerCount,
           scheduled_at: scheduledAt ? new Date(scheduledAt) : null,
           status: "created",
-          retain_until: new Date(Date.now() + 14 * 24 * 60 * 60 * 1000),
+          retain_until: new Date(Date.now() + 30 * 24 * 60 * 60 * 1000),
         },
       });
 
       await tx.participant.createMany({
-        data: participants.map((name) => ({
+        data: cleanParticipants.map((name) => ({
           session_id: s.id,
           display_name: name,
         })),
@@ -250,6 +263,85 @@ app.post("/api/sessions/:id/consent", requireAuth, async (req, res) => {
     res.json({ status: "ok" });
   } catch (error) {
     console.error("Failed to record consent", error);
+    res.status(500).json({ error: "internal_server_error" });
+  }
+});
+
+app.post("/api/sessions/:id/withdraw", requireAuth, async (req, res) => {
+  const id = req.params.id as string;
+
+  try {
+    const session = await prisma.session.findUnique({
+      where: { id },
+      include: { scores: true }
+    });
+
+    if (!session) {
+      res.status(404).json({ error: "session_not_found" });
+      return;
+    }
+
+    // Consent can only be withdrawn before session is scored
+    if (session.status === "complete" || session.status === "scoring" || session.scores.length > 0) {
+      res.status(400).json({ error: "cannot_withdraw_after_scoring" });
+      return;
+    }
+
+    await prisma.$transaction(async (tx) => {
+      // 1. Delete consent records for this session
+      await tx.consentRecord.deleteMany({
+        where: { session_id: id },
+      });
+
+      // 2. Delete any active jobs for this session
+      await tx.job.deleteMany({
+        where: { session_id: id },
+      });
+
+      // 3. Delete utterances
+      await tx.utterance.deleteMany({
+        where: { session_id: id },
+      });
+
+      // 4. Delete speech metrics
+      await tx.speechMetric.deleteMany({
+        where: { session_id: id },
+      });
+
+      // 5. Update session details
+      await tx.session.update({
+        where: { id },
+        data: {
+          status: "created",
+          consent_confirmed: false,
+          audio_local_path: null,
+          session_waveform_png_path: null,
+          session_spectrogram_png_path: null,
+          session_silence_ratio: null,
+        },
+      });
+
+      // 6. Reset participants speaker mappings
+      await tx.participant.updateMany({
+        where: { session_id: id },
+        data: { speaker_label: null },
+      });
+    });
+
+    // 7. Delete audio files from disk
+    const sessionDir = `/data/sessions/${id}`;
+    if (fs.existsSync(sessionDir)) {
+      try {
+        fs.rmSync(sessionDir, { recursive: true, force: true });
+        console.log(`Successfully deleted session audio directory ${sessionDir} due to consent withdrawal`);
+      } catch (err) {
+        console.error(`Failed to delete session directory ${sessionDir}`, err);
+      }
+    }
+
+    res.json({ status: "ok" });
+  } catch (error) {
+    console.error("Failed to withdraw consent", error);
     res.status(500).json({ error: "internal_server_error" });
   }
 });
@@ -409,6 +501,134 @@ app.get("/api/sessions/:id/audio", requireAuth, async (req, res) => {
   }
 });
 
+app.get("/api/sessions/:id/export", requireAuth, async (req, res) => {
+  const id = req.params.id as string;
+
+  try {
+    const session = await prisma.session.findUnique({
+      where: { id },
+      include: {
+        participants: {
+          include: {
+            speech_metrics: true,
+            scores: true,
+          },
+        },
+      },
+    });
+
+    if (!session) {
+      res.status(404).json({ error: "session_not_found" });
+      return;
+    }
+
+    const csvHeaders = [
+      "session_id",
+      "session_topic",
+      "session_status",
+      "recording_source",
+      "transcription_source",
+      "duration_seconds",
+      "created_at",
+      "participant_id",
+      "display_name",
+      "speaker_label",
+      "speaking_time_ms",
+      "participation_pct",
+      "word_count",
+      "wpm",
+      "filler_count",
+      "filler_rate",
+      "turns_count",
+      "avg_turn_ms",
+      "vocab_mtld_score",
+      "pitch_mean_hz",
+      "pitch_range_semitones",
+      "energy_rms_mean",
+      "energy_rms_std",
+      "pause_count",
+      "avg_pause_ms",
+      "topic_relevance_score",
+      "topic_relevance_rationale",
+      "initiative_engagement_score",
+      "initiative_engagement_rationale",
+      "coherence_structure_score",
+      "coherence_structure_rationale",
+      "responsiveness_score",
+      "responsiveness_rationale",
+      "aggregate_score",
+      "flagged_low_data",
+      "is_mock",
+      "llm_provider"
+    ];
+
+    const escapeCsv = (val: any) => {
+      if (val === null || val === undefined) return "";
+      const str = String(val);
+      if (str.includes(",") || str.includes('"') || str.includes("\n") || str.includes("\r")) {
+        return `"${str.replace(/"/g, '""')}"`;
+      }
+      return str;
+    };
+
+    const csvRows = [csvHeaders.join(",")];
+
+    for (const p of session.participants) {
+      const metric = p.speech_metrics[0];
+      const score = p.scores[0];
+
+      const row = [
+        escapeCsv(session.id),
+        escapeCsv(session.topic),
+        escapeCsv(session.status),
+        escapeCsv(session.recording_source),
+        escapeCsv(session.transcription_source || "N/A"),
+        escapeCsv(session.duration_seconds),
+        escapeCsv(session.created_at.toISOString()),
+        escapeCsv(p.id),
+        escapeCsv(p.display_name),
+        escapeCsv(p.speaker_label || "unmapped"),
+        escapeCsv(metric?.speaking_time_ms),
+        escapeCsv(metric?.participation_pct),
+        escapeCsv(metric?.word_count),
+        escapeCsv(metric?.wpm),
+        escapeCsv(metric?.filler_count),
+        escapeCsv(metric?.filler_rate),
+        escapeCsv(metric?.turns_count),
+        escapeCsv(metric?.avg_turn_ms),
+        escapeCsv(metric?.vocab_mtld_score),
+        escapeCsv(metric?.pitch_mean_hz),
+        escapeCsv(metric?.pitch_range_semitones),
+        escapeCsv(metric?.energy_rms_mean),
+        escapeCsv(metric?.energy_rms_std),
+        escapeCsv(metric?.pause_count),
+        escapeCsv(metric?.avg_pause_ms),
+        escapeCsv(score?.topic_relevance_score),
+        escapeCsv(score?.topic_relevance_rationale),
+        escapeCsv(score?.initiative_engagement_score),
+        escapeCsv(score?.initiative_engagement_rationale),
+        escapeCsv(score?.coherence_structure_score),
+        escapeCsv(score?.coherence_structure_rationale),
+        escapeCsv(score?.responsiveness_score),
+        escapeCsv(score?.responsiveness_rationale),
+        escapeCsv(score?.aggregate_score),
+        escapeCsv(score?.flagged_low_data ? "true" : "false"),
+        escapeCsv(score?.is_mock ? "true" : "false"),
+        escapeCsv(score?.llm_provider || "N/A")
+      ];
+
+      csvRows.push(row.join(","));
+    }
+
+    res.setHeader("Content-Type", "text/csv");
+    res.setHeader("Content-Disposition", `attachment; filename=session_export_${id}.csv`);
+    res.send(csvRows.join("\n"));
+  } catch (error) {
+    console.error("Failed to export session CSV", error);
+    res.status(500).json({ error: "internal_server_error" });
+  }
+});
+
 app.get("/api/sessions/:id/plots/waveform", requireAuth, async (req, res) => {
   const id = req.params.id as string;
 
@@ -457,7 +677,7 @@ app.get("/*splat", (_req, res) => {
   res.sendFile(path.join(staticDir, "index.html"));
 });
 
-const port = 3000;
+const port = Number(process.env.PORT ?? 3000);
 
 seedAdmin()
   .then(() => {

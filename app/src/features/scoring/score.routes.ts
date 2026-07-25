@@ -30,7 +30,7 @@ router.get("/", async (_req, res) => {
         }
       });
 
-      const avgScore = validScores > 0 ? Math.round(totalScore / validScores) : 0;
+      const avgScore = validScores > 0 ? Math.round(totalScore / validScores) : null;
 
       return {
         id: session.id,
@@ -39,10 +39,12 @@ router.get("/", async (_req, res) => {
         recording_source: session.recording_source,
         participant_count: session.participants.length,
         average_score: avgScore,
+        transcription_source: session.transcription_source,
         participants: session.participants.map(p => ({
             id: p.id,
             display_name: p.display_name,
-            score: p.scores?.[0]?.aggregate_score || 0
+            score: p.scores?.[0]?.aggregate_score ?? null,
+            is_mock: p.scores?.[0]?.is_mock ?? false
         }))
       };
     });

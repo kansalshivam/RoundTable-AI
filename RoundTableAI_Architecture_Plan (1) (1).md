@@ -736,6 +736,9 @@ BETTER_AUTH_SECRET=          # openssl rand -base64 32
 ASSEMBLYAI_API_KEY=
 GEMINI_API_KEY=
 GROQ_API_KEY=
+SEED_ADMIN_EMAIL=
+SEED_ADMIN_PASSWORD=
+INSTITUTION_NAME=
 ```
 
 Validated via a Zod schema at boot (`src/lib/env.ts`) so a missing variable fails immediately

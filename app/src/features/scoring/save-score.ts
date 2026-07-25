@@ -54,7 +54,7 @@ Return your evaluation as a valid JSON object strictly matching this schema, wit
       `${u.speaker_label === targetLabel ? "[TARGET STUDENT]" : `[SPEAKER ${u.speaker_label}]`} (${u.start_ms}ms - ${u.end_ms}ms): ${u.text}`
     ).join("\n");
 
-    const userPrompt = `Evaluate the target student (Voice ${targetLabel}: ${participant.display_name}).
+    const userPrompt = `Evaluate the target student (Voice ${targetLabel}).
 
 Discussion Topic: ${session.topic}
 
@@ -110,7 +110,8 @@ Please provide the detailed JSON grading for the target student.`;
           flagged_low_data: flagged,
           communication_summary_strengths: parsed.communication_summary_strengths || [],
           communication_summary_improvements: parsed.communication_summary_improvements || [],
-          llm_provider: response.provider
+          llm_provider: response.provider,
+          is_mock: response.provider === "mock"
         }
       });
       console.log(`Scoring saved for ${participant.display_name}`);

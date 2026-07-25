@@ -62,20 +62,31 @@ async function handleTranscriptionJob(job: any) {
     await new Promise((resolve) => setTimeout(resolve, 3000));
     
     const mockUtterances = [
-      { speaker: "A", text: "Hello everyone, let's start our group discussion on the topic today.", start: 1000, end: 5000 },
-      { speaker: "B", text: "I agree, let's make sure we all contribute. I think speech technology is highly relevant.", start: 6000, end: 12000 },
-      { speaker: "C", text: "Yes, definitely. We should look at it from both technical and ethical perspectives.", start: 13000, end: 19000 },
-      { speaker: "A", text: "That is a very good point. Let's focus on the digital signal processing aspect first.", start: 20000, end: 25000 },
-      { speaker: "B", text: "Right, pitch and energy tracking are direct applications of the syllabus modules.", start: 26000, end: 32000 },
-      { speaker: "C", text: "We have some great points here. Let's conclude our session.", start: 33000, end: 35000 }
+      { speaker: "A", text: "Um, I would like to open by saying that campus placement discussions should measure reasoning, listening, and clarity together, not just who speaks first or longest.", start: 1000, end: 9800 },
+      { speaker: "B", text: "I agree with that framing, and I think the process also needs transparency because students should know whether the system is measuring words, pauses, pitch, or actual argument quality.", start: 10200, end: 20200 },
+      { speaker: "C", text: "Yes, but we should be careful. Acoustic measurements can describe the speech signal, like loudness or pauses, but they should not become judgments about confidence or personality.", start: 21000, end: 31900 },
+      { speaker: "A", text: "That is important. If the tool explains that pitch and energy are neutral measurements, then evaluators can use the data as context instead of treating it like an automatic verdict.", start: 32600, end: 43200 },
+      { speaker: "B", text: "Another point is fairness. Uh, someone may speak slowly because they are organizing thoughts, so the rubric should reward relevance, responsiveness, and structure more than raw speed.", start: 44000, end: 54500 },
+      { speaker: "C", text: "Exactly. The dashboard can still show words per minute and filler rate, but the score should come from the transcript and the discussion topic, with low-data warnings when a speaker barely contributes.", start: 55300, end: 67500 },
+      { speaker: "A", text: "For implementation, I think the strongest approach is to keep transcription, speaker mapping, signal analysis, and scoring as separate stages so a reviewer can inspect each one.", start: 68400, end: 79800 },
+      { speaker: "B", text: "That separation also helps during offline demos. If mock data is used, it must be labeled clearly, otherwise the product would look more complete than it actually is.", start: 80600, end: 90800 },
+      { speaker: "C", text: "So our conclusion is that AI can support placement assessment when it is transparent, consent-driven, and limited to evidence that the institution can defend.", start: 91600, end: 101000 }
     ];
 
+    await prisma.session.update({
+      where: { id: session.id },
+      data: { transcription_source: "mock" },
+    });
     await processTranscriptResult(session.id, { utterances: mockUtterances });
     return;
   }
 
   // Real path using AssemblyAI
   const uploadUrl = await client.files.upload(session.audio_local_path);
+  await prisma.session.update({
+    where: { id: session.id },
+    data: { transcription_source: "assemblyai" },
+  });
 
   const transcriptSubmit = await client.transcripts.submit({
     audio_url: uploadUrl,
@@ -279,14 +290,50 @@ const JOB_HANDLERS: Record<string, (job: any) => Promise<void>> = {
 
 let workerInterval: NodeJS.Timeout | null = null;
 
+export async function recoverOrphanedJobs() {
+  console.log("Checking for orphaned in-progress jobs...");
+  try {
+    const orphanedJobs = await prisma.job.findMany({
+      where: { status: "in_progress" }
+    });
+    for (const job of orphanedJobs) {
+      console.log(`Recovering orphaned job ${job.id} of type ${job.job_type} from in_progress to queued...`);
+      await prisma.job.update({
+        where: { id: job.id },
+        data: {
+          status: "queued",
+          error_message: "Job orphaned due to server crash/restart.",
+        }
+      });
+    }
+  } catch (err) {
+    console.error("Failed to recover orphaned jobs", err);
+  }
+}
+
 export function startWorker() {
   if (workerInterval) return;
+
+  // Run orphaned recovery once on boot
+  recoverOrphanedJobs();
   
   workerInterval = setInterval(async () => {
-    const job = await prisma.job.findFirst({
+    // 1. Fetch all queued jobs
+    const jobs = await prisma.job.findMany({
       where: { status: "queued" },
       orderBy: { created_at: "asc" },
     });
+    if (jobs.length === 0) return;
+
+    // 2. Filter based on exponential backoff elapsed time
+    const now = new Date();
+    const job = jobs.find((j) => {
+      if (j.attempts === 0) return true;
+      const elapsedMs = now.getTime() - new Date(j.updated_at).getTime();
+      const backoffSec = j.attempts === 1 ? 2 : j.attempts === 2 ? 8 : 32;
+      return elapsedMs >= backoffSec * 1000;
+    });
+
     if (!job) return;
 
     try {

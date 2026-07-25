@@ -19,8 +19,8 @@ export function RecordingWidget({ onStop }: RecordingWidgetProps) {
 
     const ws = WaveSurfer.create({
       container: containerRef.current,
-      waveColor: "#475569",
-      progressColor: "#3b82f6",
+      waveColor: "#3A2A73", // lavender-300
+      progressColor: "#9678E3", // lavender-500
       height: 80,
       barWidth: 2,
       barGap: 1,
@@ -75,18 +75,57 @@ export function RecordingWidget({ onStop }: RecordingWidgetProps) {
 
   return (
     <div className="recording-widget-container">
-      <div ref={containerRef} className="waveform-canvas-container" style={{ minHeight: "80px", background: "#0f172a", borderRadius: "8px", padding: "10px", marginBottom: "15px" }} />
+      <div 
+        ref={containerRef} 
+        className="waveform-canvas-container" 
+        style={{ 
+          minHeight: "80px", 
+          background: "rgba(18, 11, 41, 0.6)", 
+          border: "1px solid var(--border)",
+          borderRadius: "14px", 
+          padding: "10px", 
+          marginBottom: "15px",
+          boxShadow: "inset 0 2px 8px rgba(0, 0, 0, 0.4)"
+        }} 
+      />
       <div className="recording-controls" style={{ display: "flex", alignItems: "center", justifyContent: "space-between" }}>
-        <div className="duration-counter" style={{ color: "#38bdf8", fontWeight: "bold", fontSize: "1.2rem" }}>
+        <div className="duration-counter animate-pulse" style={{ color: "var(--color-lavender-600)", fontWeight: "bold", fontSize: "1.3rem", textShadow: "0 0 10px rgba(180,155,238,0.4)" }}>
           {formatDuration(duration)}
         </div>
         <div>
           {!isRecording ? (
-            <button type="button" onClick={startRecording} className="btn-record-start" style={{ background: "#ef4444", color: "white", padding: "8px 16px", borderRadius: "6px", border: "none", cursor: "pointer" }}>
+            <button 
+              type="button" 
+              onClick={startRecording} 
+              className="btn-record-start" 
+              style={{ 
+                background: "linear-gradient(135deg, var(--color-accent-peach), #ef4444)", 
+                color: "white", 
+                padding: "10px 20px", 
+                borderRadius: "12px", 
+                border: "none", 
+                cursor: "pointer",
+                fontWeight: "bold",
+                boxShadow: "0 0 15px rgba(255, 138, 91, 0.4)"
+              }}
+            >
               Start Live Recording
             </button>
           ) : (
-            <button type="button" onClick={stopRecording} className="btn-record-stop" style={{ background: "#475569", color: "white", padding: "8px 16px", borderRadius: "6px", border: "none", cursor: "pointer" }}>
+            <button 
+              type="button" 
+              onClick={stopRecording} 
+              className="btn-record-stop" 
+              style={{ 
+                background: "var(--primary-soft)", 
+                color: "var(--color-lavender-600)", 
+                padding: "10px 20px", 
+                borderRadius: "12px", 
+                border: "1px solid var(--border)", 
+                cursor: "pointer",
+                fontWeight: "bold"
+              }}
+            >
               Stop & Upload
             </button>
           )}

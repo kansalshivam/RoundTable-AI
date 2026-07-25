@@ -87,6 +87,7 @@ model Session {
   status                       String          @default("created")
   audio_local_path             String?
   recording_source             String          @default("live")
+  transcription_source         String?
   original_filename            String?
   original_format              String?
   duration_seconds             Int?
@@ -184,6 +185,7 @@ model Score {
   communication_summary_strengths     String[]
   communication_summary_improvements  String[]
   llm_provider                        String
+  is_mock                             Boolean  @default(false)
   created_at                          DateTime @default(now()) @db.Timestamptz(6)
   session                             Session  @relation(fields: [session_id], references: [id])
   participant                         Participant @relation(fields: [participant_id], references: [id])
