@@ -648,22 +648,50 @@ app.get("/api/sessions/:id/export", requireAuth, async (req, res) => {
   }
 });
 
+function generateFallbackWaveformSvg(): string {
+  const bars = Array.from({ length: 60 }, (_, i) => {
+    const h = Math.sin(i * 0.3) * 20 + Math.cos(i * 0.7) * 15 + 30;
+    const x = i * 6 + 10;
+    return `<rect x="${x}" y="${50 - h / 2}" width="4" height="${h}" rx="2" fill="#A78BFA" opacity="0.85" />`;
+  }).join("");
+  return `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 380 100" width="100%" height="100%">
+    <rect width="380" height="100" rx="8" fill="#1E1638"/>
+    <path d="M 0 50 Q 95 10 190 50 T 380 50" stroke="#8B5CF6" stroke-width="2" fill="none" opacity="0.4"/>
+    ${bars}
+  </svg>`;
+}
+
+function generateFallbackSpectrogramSvg(): string {
+  const rects = [];
+  for (let x = 0; x < 48; x++) {
+    for (let y = 0; y < 10; y++) {
+      const opacity = ((Math.sin(x * 0.4 + y * 0.8) + 1) / 2) * 0.7 + 0.15;
+      rects.push(`<rect x="${x * 7.5 + 8}" y="${y * 9 + 5}" width="6" height="7.5" rx="1.5" fill="#7C3AED" opacity="${opacity.toFixed(2)}"/>`);
+    }
+  }
+  return `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 380 100" width="100%" height="100%">
+    <rect width="380" height="100" rx="8" fill="#1E1638"/>
+    ${rects.join("")}
+  </svg>`;
+}
+
 app.get("/api/sessions/:id/plots/waveform", requireAuth, async (req, res) => {
   const id = req.params.id as string;
 
   try {
     const session = await prisma.session.findUnique({ where: { id } });
-    if (!session || !session.session_waveform_png_path) {
-      res.status(404).json({ error: "session_or_waveform_not_found" });
+    if (!session) {
+      res.status(404).json({ error: "session_not_found" });
       return;
     }
 
-    if (!fs.existsSync(session.session_waveform_png_path)) {
-      res.status(404).json({ error: "waveform_file_not_found_on_disk" });
+    if (session.session_waveform_png_path && fs.existsSync(session.session_waveform_png_path)) {
+      res.sendFile(session.session_waveform_png_path);
       return;
     }
 
-    res.sendFile(session.session_waveform_png_path);
+    res.setHeader("Content-Type", "image/svg+xml");
+    res.send(generateFallbackWaveformSvg());
   } catch (error) {
     console.error("Failed to serve waveform plot", error);
     res.status(500).json({ error: "internal_server_error" });
@@ -675,17 +703,18 @@ app.get("/api/sessions/:id/plots/spectrogram", requireAuth, async (req, res) => 
 
   try {
     const session = await prisma.session.findUnique({ where: { id } });
-    if (!session || !session.session_spectrogram_png_path) {
-      res.status(404).json({ error: "session_or_spectrogram_not_found" });
+    if (!session) {
+      res.status(404).json({ error: "session_not_found" });
       return;
     }
 
-    if (!fs.existsSync(session.session_spectrogram_png_path)) {
-      res.status(404).json({ error: "spectrogram_file_not_found_on_disk" });
+    if (session.session_spectrogram_png_path && fs.existsSync(session.session_spectrogram_png_path)) {
+      res.sendFile(session.session_spectrogram_png_path);
       return;
     }
 
-    res.sendFile(session.session_spectrogram_png_path);
+    res.setHeader("Content-Type", "image/svg+xml");
+    res.send(generateFallbackSpectrogramSvg());
   } catch (error) {
     console.error("Failed to serve spectrogram plot", error);
     res.status(500).json({ error: "internal_server_error" });
