@@ -74,11 +74,13 @@ function SessionGallery({ sessions, onSelect }: { sessions: any[]; onSelect: (id
   );
 }
 
+import { apiFetch } from "../../lib/api-client";
+
 export function DashboardView({ onSelectSession }: { onSelectSession: (id: string) => void }) {
   const [sessions, setSessions] = useState<any[]>([]);
 
   useEffect(() => {
-    fetch("/api/scoring")
+    apiFetch("/api/scoring")
       .then((res) => (res.ok ? res.json() : []))
       .then((data) => setSessions(Array.isArray(data) ? data : []))
       .catch(() => setSessions([]));

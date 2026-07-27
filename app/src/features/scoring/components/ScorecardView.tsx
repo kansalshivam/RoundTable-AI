@@ -36,12 +36,14 @@ function StatCard({ label, value }: { label: string; value: string | number }) {
   );
 }
 
+import { apiFetch } from "../../../lib/api-client";
+
 export function ScorecardView({ sessionId }: { sessionId: string }) {
   const [data, setData] = useState<any>(null);
   const containerRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
-    fetch(`/api/scoring/${sessionId}`)
+    apiFetch(`/api/scoring/${sessionId}`)
       .then((res) => res.json())
       .then((payload) => setData(payload));
   }, [sessionId]);

@@ -12,6 +12,7 @@ import { Check, Pause, Play, ShieldWarning } from "@phosphor-icons/react";
 import { Tabs } from "@base-ui/react/tabs";
 import { AuroraMesh, CommandDock, CursorHalo, FloatingSparkles, InsightRibbon, NoiseOverlay, SignalLattice } from "./components/ui/PremiumFX";
 import "./App.css";
+import { apiFetch } from "./lib/api-client";
 
 type SessionState =
   | { status: "loading" }
@@ -68,7 +69,7 @@ function App() {
   const [isPlaying, setIsPlaying] = useState(false);
 
   async function loadSession() {
-    const response = await fetch("/api/session");
+    const response = await apiFetch("/api/session");
     if (!response.ok) {
       setSessionState({ status: "anonymous" });
       return;
@@ -79,7 +80,7 @@ function App() {
   }
 
   async function loadSessionsList() {
-    const response = await fetch("/api/sessions");
+    const response = await apiFetch("/api/sessions");
     if (response.ok) {
       const data = await response.json();
       setSessions(data);
@@ -95,7 +96,7 @@ function App() {
     if ((currentScreen !== "processing" && currentScreen !== "signal-lab") || !activeSessionId) return;
 
     const fetchStatus = async () => {
-      const res = await fetch(`/api/sessions/${activeSessionId}/status`);
+      const res = await apiFetch(`/api/sessions/${activeSessionId}/status`);
       if (res.ok) {
         const data = await res.json();
         setSessionStatus(data);
@@ -111,7 +112,7 @@ function App() {
   async function handleLogin(event: FormEvent) {
     event.preventDefault();
     setError("");
-    const response = await fetch("/api/login", {
+    const response = await apiFetch("/api/login", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ email, password }),
@@ -124,7 +125,7 @@ function App() {
   }
 
   async function handleLogout() {
-    await fetch("/api/logout", { method: "POST" });
+    await apiFetch("/api/logout", { method: "POST" });
     setSessionState({ status: "anonymous" });
     setCurrentScreen("dashboard");
   }
@@ -166,7 +167,7 @@ function App() {
       return;
     }
 
-    const response = await fetch("/api/sessions", {
+    const response = await apiFetch("/api/sessions", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({
@@ -196,7 +197,7 @@ function App() {
     setUploadError("");
     setUploadProgress("Recording consent...");
 
-    const consentRes = await fetch(`/api/sessions/${activeSessionId}/consent`, {
+    const consentRes = await apiFetch(`/api/sessions/${activeSessionId}/consent`, {
       method: "POST",
     });
     if (!consentRes.ok) {
@@ -209,7 +210,7 @@ function App() {
     const formData = new FormData();
     formData.append("audio", fileBlob, filename || "live_recording.wav");
 
-    const uploadRes = await fetch(`/api/sessions/${activeSessionId}/upload?source=${source}`, {
+    const uploadRes = await apiFetch(`/api/sessions/${activeSessionId}/upload?source=${source}`, {
       method: "POST",
       body: formData,
     });
@@ -241,7 +242,7 @@ function App() {
       return;
     }
     try {
-      const response = await fetch(`/api/sessions/${sessionStatus.session.id}/withdraw`, {
+      const response = await apiFetch(`/api/sessions/${sessionStatus.session.id}/withdraw`, {
         method: "POST",
       });
       if (response.ok) {
@@ -280,7 +281,7 @@ function App() {
     }
 
     setMappingSubmitting(true);
-    const res = await fetch(`/api/sessions/${activeSessionId}/map-speakers`, {
+    const res = await apiFetch(`/api/sessions/${activeSessionId}/map-speakers`, {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ mappings: speakerMappings }),
@@ -294,7 +295,7 @@ function App() {
     }
 
     // Refresh immediately to show processing status after mapping
-    const statusRes = await fetch(`/api/sessions/${activeSessionId}/status`);
+    const statusRes = await apiFetch(`/api/sessions/${activeSessionId}/status`);
     if (statusRes.ok) {
       const data = await statusRes.json();
       setSessionStatus(data);
