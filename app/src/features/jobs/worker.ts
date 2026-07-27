@@ -57,80 +57,46 @@ async function handleTranscriptionJob(job: any) {
     data: { status: "transcribing" },
   });
 
-  // Mock path if API key is empty
   if (!env.ASSEMBLYAI_API_KEY) {
-    console.log("No ASSEMBLYAI_API_KEY found, running mock transcription...");
+    throw new Error("ASSEMBLYAI_API_KEY is missing from environment variables on Render");
+  }
+
+  console.log(`Uploading real audio file (${session.audio_local_path}) to AssemblyAI...`);
+  const audioBuffer = fs.readFileSync(session.audio_local_path);
+  const uploadUrl = await client.files.upload(audioBuffer);
+
+  await prisma.session.update({
+    where: { id: session.id },
+    data: { transcription_source: "assemblyai" },
+  });
+
+  console.log("Submitting real audio transcript job to AssemblyAI...");
+  const transcriptSubmit = await client.transcripts.submit({
+    audio_url: uploadUrl,
+    speech_models: ["universal-2"],
+    speaker_labels: true,
+    disfluencies: true,
+    webhook_url: `${env.APP_BASE_URL}/api/webhooks/assemblyai/${session.id}`,
+  });
+
+  let transcript = await client.transcripts.get(transcriptSubmit.id);
+  const startTime = Date.now();
+  const timeoutMs = 10 * 60 * 1000; // 10 minutes
+
+  while (transcript.status !== "completed" && transcript.status !== "error") {
+    if (Date.now() - startTime > timeoutMs) {
+      throw new Error("AssemblyAI transcription timed out");
+    }
     await new Promise((resolve) => setTimeout(resolve, 3000));
-    
-    const mockUtterances = [
-      { speaker: "A", text: "Um, I would like to open by saying that campus placement discussions should measure reasoning, listening, and clarity together, not just who speaks first or longest.", start: 1000, end: 9800 },
-      { speaker: "B", text: "I agree with that framing, and I think the process also needs transparency because students should know whether the system is measuring words, pauses, pitch, or actual argument quality.", start: 10200, end: 20200 },
-      { speaker: "C", text: "Yes, but we should be careful. Acoustic measurements can describe the speech signal, like loudness or pauses, but they should not become judgments about confidence or personality.", start: 21000, end: 31900 },
-      { speaker: "A", text: "That is important. If the tool explains that pitch and energy are neutral measurements, then evaluators can use the data as context instead of treating it like an automatic verdict.", start: 32600, end: 43200 },
-      { speaker: "B", text: "Another point is fairness. Uh, someone may speak slowly because they are organizing thoughts, so the rubric should reward relevance, responsiveness, and structure more than raw speed.", start: 44000, end: 54500 },
-      { speaker: "C", text: "Exactly. The dashboard can still show words per minute and filler rate, but the score should come from the transcript and the discussion topic, with low-data warnings when a speaker barely contributes.", start: 55300, end: 67500 },
-      { speaker: "A", text: "For implementation, I think the strongest approach is to keep transcription, speaker mapping, signal analysis, and scoring as separate stages so a reviewer can inspect each one.", start: 68400, end: 79800 },
-      { speaker: "B", text: "That separation also helps during offline demos. If mock data is used, it must be labeled clearly, otherwise the product would look more complete than it actually is.", start: 80600, end: 90800 },
-      { speaker: "C", text: "So our conclusion is that AI can support placement assessment when it is transparent, consent-driven, and limited to evidence that the institution can defend.", start: 91600, end: 101000 }
-    ];
-
-    await prisma.session.update({
-      where: { id: session.id },
-      data: { transcription_source: "mock" },
-    });
-    await processTranscriptResult(session.id, { utterances: mockUtterances });
-    return;
+    transcript = await client.transcripts.get(transcriptSubmit.id);
   }
 
-  // Real path using AssemblyAI with fallback resilience
-  try {
-    console.log(`Uploading audio for session ${session.id} to AssemblyAI (${session.audio_local_path})...`);
-    const audioBuffer = fs.readFileSync(session.audio_local_path);
-    const uploadUrl = await client.files.upload(audioBuffer);
-    await prisma.session.update({
-      where: { id: session.id },
-      data: { transcription_source: "assemblyai" },
-    });
-
-    const transcriptSubmit = await client.transcripts.submit({
-      audio_url: uploadUrl,
-      speech_models: ["universal-2"],
-      speaker_labels: true,
-      disfluencies: true,
-      webhook_url: `${env.APP_BASE_URL}/api/webhooks/assemblyai/${session.id}`,
-    });
-
-    let transcript = await client.transcripts.get(transcriptSubmit.id);
-    const startTime = Date.now();
-    const timeoutMs = 10 * 60 * 1000; // 10 minutes
-
-    while (transcript.status !== "completed" && transcript.status !== "error") {
-      if (Date.now() - startTime > timeoutMs) {
-        throw new Error("AssemblyAI transcription timed out");
-      }
-      await new Promise((resolve) => setTimeout(resolve, 3000));
-      transcript = await client.transcripts.get(transcriptSubmit.id);
-    }
-
-    if (transcript.status === "error") {
-      throw new Error(`AssemblyAI transcription failed: ${transcript.error}`);
-    }
-
-    await processTranscriptResult(session.id, transcript);
-  } catch (err: any) {
-    console.warn(`AssemblyAI transcription notice (${err?.message || err}). Utilizing resilient fallback transcript...`);
-    const fallbackUtterances = [
-      { speaker: "A", text: "Welcome to today's group discussion. We are evaluating how artificial intelligence tools can assist recruitment teams ethically.", start: 1000, end: 12000 },
-      { speaker: "B", text: "Thank you. Automated analytics can accelerate preliminary screening, but human evaluators must retain final decision authority.", start: 12500, end: 25000 },
-      { speaker: "C", text: "I agree completely. A balanced system should provide objective acoustic and transcript data while ensuring candidate privacy.", start: 25500, end: 40000 },
-      { speaker: "A", text: "To conclude, a multi-competency rubric provides the most holistic evaluation of candidate communication skills.", start: 40500, end: 55000 },
-    ];
-    await prisma.session.update({
-      where: { id: session.id },
-      data: { transcription_source: "fallback_mock" },
-    });
-    await processTranscriptResult(session.id, { utterances: fallbackUtterances });
+  if (transcript.status === "error") {
+    throw new Error(`AssemblyAI transcription failed: ${transcript.error}`);
   }
+
+  console.log(`AssemblyAI completed transcription for session ${session.id}. Found ${transcript.utterances?.length || 0} real utterances.`);
+  await processTranscriptResult(session.id, transcript);
 }
 
 async function handleDspAnalysisJob(job: any) {

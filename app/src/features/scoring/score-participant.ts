@@ -108,21 +108,7 @@ export async function scoreParticipant(prompt: { system: string; user: string })
 
     throw lastGeminiError || new Error("Gemini generation failed");
   } catch (err: any) {
-    console.error("All LLM providers failed, generating mock score fallback:", err);
-    return {
-      raw: JSON.stringify({
-        topic_relevance_score: 85,
-        topic_relevance_rationale: "[Fallback] Student consistently referred back to the core discussion topic.",
-        initiative_engagement_score: 88,
-        initiative_engagement_rationale: "[Fallback] High participation and frequently initiated new sub-topics.",
-        coherence_structure_score: 82,
-        coherence_structure_rationale: "[Fallback] Clear expression with coherent structure.",
-        responsiveness_score: 86,
-        responsiveness_rationale: "[Fallback] Addressed other participants effectively.",
-        communication_summary_strengths: ["High engagement", "Good active listening"],
-        communication_summary_improvements: ["Could structure complex arguments better"]
-      }),
-      provider: "mock" as const
-    };
+    console.error("All LLM providers failed:", err);
+    throw new Error(`LLM Scoring Failed: ${err?.message || err}`);
   }
 }
