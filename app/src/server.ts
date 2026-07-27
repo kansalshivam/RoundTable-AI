@@ -648,6 +648,35 @@ app.get("/api/sessions/:id/export", requireAuth, async (req, res) => {
   }
 });
 
+app.delete("/api/sessions/:id", requireAuth, async (req, res) => {
+  const id = req.params.id as string;
+  try {
+    const session = await prisma.session.findUnique({ where: { id } });
+    if (!session) {
+      res.status(404).json({ error: "session_not_found" });
+      return;
+    }
+
+    await prisma.score.deleteMany({ where: { session_id: id } });
+    await prisma.speechMetric.deleteMany({ where: { session_id: id } });
+    await prisma.utterance.deleteMany({ where: { session_id: id } });
+    await prisma.job.deleteMany({ where: { session_id: id } });
+    await prisma.consentRecord.deleteMany({ where: { session_id: id } });
+    await prisma.participant.deleteMany({ where: { session_id: id } });
+    await prisma.session.delete({ where: { id } });
+
+    const sessionDir = path.resolve(process.cwd(), "data/sessions", id);
+    if (fs.existsSync(sessionDir)) {
+      fs.rmSync(sessionDir, { recursive: true, force: true });
+    }
+
+    res.json({ status: "deleted", id });
+  } catch (err: any) {
+    console.error("Error deleting session:", err);
+    res.status(500).json({ error: "delete_failed", details: err?.message || err });
+  }
+});
+
 function generateFallbackWaveformSvg(): string {
   const bars = Array.from({ length: 60 }, (_, i) => {
     const h = Math.sin(i * 0.3) * 20 + Math.cos(i * 0.7) * 15 + 30;

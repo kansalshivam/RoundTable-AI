@@ -8,7 +8,7 @@ import { SpotlightCard } from "./components/ui/SpotlightCard";
 import { StepTracker } from "./components/ui/StepTracker";
 import { AnimatedCheckbox } from "./components/ui/AnimatedCheckbox";
 import { HoverAudioPreview } from "./components/ui/HoverAudioPreview";
-import { Check, Pause, Play, ShieldWarning } from "@phosphor-icons/react";
+import { Check, Pause, Play, ShieldWarning, Trash } from "@phosphor-icons/react";
 import { Tabs } from "@base-ui/react/tabs";
 import { AuroraMesh, CommandDock, CursorHalo, FloatingSparkles, InsightRibbon, NoiseOverlay, SignalLattice } from "./components/ui/PremiumFX";
 import "./App.css";
@@ -327,6 +327,21 @@ function App() {
     setCurrentScreen("signal-lab");
   };
 
+  const handleDeleteSession = async (sessionId: string) => {
+    if (!window.confirm("Are you sure you want to delete this session?")) return;
+    try {
+      const res = await apiFetch(`/api/sessions/${sessionId}`, { method: "DELETE" });
+      if (res.ok) {
+        loadSessionsList();
+      } else {
+        alert("Failed to delete session.");
+      }
+    } catch (e) {
+      console.error("Delete error:", e);
+      alert("Error deleting session.");
+    }
+  };
+
 
 
   // Signal Lab playback handlers
@@ -554,7 +569,7 @@ function App() {
                         <td className="py-4 px-2 capitalize hidden sm:table-cell">{s.recording_source}</td>
                         <td className="py-4 px-2 hidden sm:table-cell">{s.duration_seconds ? `${s.duration_seconds}s` : "--"}</td>
                         <td className="py-4 px-2 text-right">
-                          <div className="flex justify-end gap-2">
+                          <div className="flex justify-end gap-2 items-center">
                             {s.status === "complete" || s.status === "scoring" ? (
                               <>
                                 <button 
@@ -588,6 +603,15 @@ function App() {
                                 Open Status
                               </button>
                             )}
+                            <button 
+                              type="button" 
+                              onClick={() => handleDeleteSession(s.id)} 
+                              className="px-2.5 py-1.5 bg-rose-950/40 hover:bg-rose-900/80 text-rose-300 text-xs font-semibold rounded-md transition-colors border border-rose-800/40 flex items-center gap-1"
+                              title="Delete session"
+                            >
+                              <Trash size={14} />
+                              Delete
+                            </button>
                           </div>
                         </td>
                       </tr>
