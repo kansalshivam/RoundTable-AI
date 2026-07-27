@@ -221,8 +221,8 @@ app.post("/api/sessions/:id/upload", requireAuth, upload.single("audio"), async 
   }
 
   const rawPath = req.file.path;
-  const finalDir = `/data/sessions/${id}`;
-  const finalPath = `${finalDir}/recording.wav`;
+  const finalDir = path.resolve(process.cwd(), "data/sessions", id);
+  const finalPath = path.join(finalDir, "recording.wav");
   fs.mkdirSync(finalDir, { recursive: true });
 
   try {

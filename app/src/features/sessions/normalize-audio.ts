@@ -1,4 +1,15 @@
 import ffmpeg from "fluent-ffmpeg";
+// @ts-ignore
+import ffmpegPath from "ffmpeg-static";
+// @ts-ignore
+import ffprobeStatic from "ffprobe-static";
+
+if (typeof ffmpegPath === "string") {
+  ffmpeg.setFfmpegPath(ffmpegPath);
+}
+if (ffprobeStatic && (ffprobeStatic as any).path) {
+  ffmpeg.setFfprobePath((ffprobeStatic as any).path);
+}
 
 export function normalizeToWav16kMono(inputPath: string, outputPath: string): Promise<void> {
   return new Promise((resolve, reject) => {
