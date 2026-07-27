@@ -3,7 +3,6 @@ import express from "express";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
 import { prisma } from "./lib/db.js";
-import { env } from "./lib/env.js";
 import {
   createSession,
   destroySession,
@@ -24,6 +23,21 @@ import scoreRouter from "./features/scoring/score.routes.js";
 const app = express();
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const staticDir = path.resolve(__dirname, "../dist");
+
+app.use((req, res, next) => {
+  const origin = req.headers.origin;
+  if (origin) {
+    res.setHeader("Access-Control-Allow-Origin", origin);
+    res.setHeader("Access-Control-Allow-Credentials", "true");
+    res.setHeader("Access-Control-Allow-Methods", "GET, POST, PUT, DELETE, OPTIONS");
+    res.setHeader("Access-Control-Allow-Headers", "Content-Type, Authorization, Cookie");
+  }
+  if (req.method === "OPTIONS") {
+    res.status(204).end();
+    return;
+  }
+  next();
+});
 
 app.use(express.json());
 app.use(cookieParser());
@@ -70,8 +84,8 @@ app.post("/api/login", async (req, res) => {
   const session = await createSession(user.id);
   res.cookie(SESSION_COOKIE_NAME, session.token, {
     httpOnly: true,
-    sameSite: "lax",
-    secure: env.APP_BASE_URL.startsWith("https://"),
+    sameSite: "none",
+    secure: true,
     expires: session.expiresAt,
   });
   res.json({ authenticated: true });
@@ -79,7 +93,11 @@ app.post("/api/login", async (req, res) => {
 
 app.post("/api/logout", async (req, res) => {
   await destroySession(req.cookies[SESSION_COOKIE_NAME]);
-  res.clearCookie(SESSION_COOKIE_NAME);
+  res.clearCookie(SESSION_COOKIE_NAME, {
+    httpOnly: true,
+    sameSite: "none",
+    secure: true,
+  });
   res.status(204).end();
 });
 
