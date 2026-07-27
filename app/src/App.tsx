@@ -1076,7 +1076,8 @@ function App() {
                       >
                         <img 
                           className="w-full h-auto opacity-80 group-hover:opacity-100 transition-opacity" 
-                          src={`/api/sessions/${activeSessionId}/plots/waveform?t=${Date.now()}`} 
+                          src={`${import.meta.env.VITE_API_URL || ""}/api/sessions/${activeSessionId}/plots/waveform?t=${Date.now()}`} 
+                          crossOrigin="use-credentials"
                           alt="Waveform plot" 
                         />
                         <div className="absolute top-0 bottom-0 w-px pointer-events-none transition-all duration-100" style={{ left: `${playbackProgress}%`, background: 'var(--color-lavender-500)', boxShadow: '0 0 12px rgba(150,120,227,0.8)' }} />
@@ -1094,7 +1095,8 @@ function App() {
                       >
                         <img 
                           className="w-full h-auto mix-blend-screen opacity-90 group-hover:opacity-100 transition-opacity" 
-                          src={`/api/sessions/${activeSessionId}/plots/spectrogram?t=${Date.now()}`} 
+                          src={`${import.meta.env.VITE_API_URL || ""}/api/sessions/${activeSessionId}/plots/spectrogram?t=${Date.now()}`} 
+                          crossOrigin="use-credentials"
                           alt="Spectrogram plot" 
                         />
                         <div className="absolute top-0 bottom-0 w-px pointer-events-none transition-all duration-100" style={{ left: `${playbackProgress}%`, background: 'var(--color-lavender-500)', boxShadow: '0 0 12px rgba(150,120,227,0.8)' }} />

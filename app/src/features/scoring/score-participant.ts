@@ -14,8 +14,8 @@ function isRateLimitError(err: any): boolean {
 }
 
 export async function scoreParticipant(prompt: { system: string; user: string }) {
-  if (!env.GEMINI_API_KEY) {
-      console.log("No GEMINI_API_KEY provided. Using mock LLM response...");
+  if (!env.GEMINI_API_KEY && !env.GROQ_API_KEY) {
+      console.log("No GEMINI_API_KEY or GROQ_API_KEY provided. Using mock LLM response...");
       await new Promise(resolve => setTimeout(resolve, 2000)); // Simulate network latency
       return {
         raw: JSON.stringify({
@@ -35,11 +35,11 @@ export async function scoreParticipant(prompt: { system: string; user: string })
   }
 
   try {
-    // Try standard production Gemini models in sequence
-    const primaryModels = ["gemini-2.0-flash", "gemini-2.0-flash-lite"];
     let lastGeminiError: any = null;
+    if (env.GEMINI_API_KEY) {
+      const primaryModels = ["gemini-2.0-flash", "gemini-2.0-flash-lite"];
 
-    for (const modelName of primaryModels) {
+      for (const modelName of primaryModels) {
       try {
         const model = gemini.getGenerativeModel({ model: modelName });
         const result = await pRetry(
@@ -75,6 +75,7 @@ export async function scoreParticipant(prompt: { system: string; user: string })
           // Rate limit applies to the whole project/key, so break loop and switch to Groq
           break;
         }
+      }
       }
     }
 
