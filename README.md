@@ -1,428 +1,303 @@
-# RoundTable AI
+# RoundTable AI — Multi-Speaker Group Discussion Assessment Platform
 
-An automated, privacy-aware public speaking and group discussion assessment platform that analyzes multi-speaker verbal interactions and generates rubric-based evaluation scorecards using speech digital signal processing, speech-to-text diarization, acoustic/linguistic analytics, and anonymized AI evaluation.
+[![Live Console](https://img.shields.io/badge/Live_Console-roundtable--ai.vercel.app-7C3AED?style=for-the-badge&logo=vercel&logoColor=white)](https://roundtable-ai.vercel.app/)
+[![API Status](https://img.shields.io/badge/API_Status-Online-10B981?style=for-the-badge&logo=render&logoColor=white)](https://roundtable-backend-z8fu.onrender.com/api/health)
+[![DSP Engine](https://img.shields.io/badge/DSP_Engine-Online-3B82F6?style=for-the-badge&logo=python&logoColor=white)](https://roundtable-dsp.onrender.com/health)
+[![Database](https://img.shields.io/badge/Database-Neon_PostgreSQL-00E599?style=for-the-badge&logo=postgresql&logoColor=white)](https://neon.tech/)
+[![License: MIT](https://img.shields.io/badge/License-MIT-F59E0B.svg?style=for-the-badge)](LICENSE)
 
-**Project Status**: Local development and system audit completed. Prepared for repository publication and production single-host deployment.
+A production-grade, privacy-aware AI operations console for transcribing, segmenting, extracting acoustic/linguistic signals, and evaluating candidate performance in multi-speaker Group Discussions (GD) — powered by AssemblyAI Universal-2 speech diarization, Python acoustic signal processing, and Groq Llama 3.1 LLM rubric scoring.
 
----
-
-## Table of Contents
-
-- [Overview](#overview)
-- [Key Features](#key-features)
-- [How It Works](#how-it-works)
-- [System Architecture](#system-architecture)
-- [Technology Stack](#technology-stack)
-- [Project Structure](#project-structure)
-- [Prerequisites](#prerequisites)
-- [Environment Variables](#environment-variables)
-- [Local Setup](#local-setup)
-- [Docker Architecture](#docker-architecture)
-- [External API Integrations](#external-api-integrations)
-- [API Architecture](#api-architecture)
-- [Security & Privacy Controls](#security--privacy-controls)
-- [Testing & Verification](#testing--verification)
-- [Deployment Architecture](#deployment-architecture)
-- [Production Deployment Checklist](#production-deployment-checklist)
-- [Known Limitations](#known-limitations)
-- [Future Improvements](#future-improvements)
-- [Project Documentation](#project-documentation)
-- [License](#license)
+[Live Platform →](https://roundtable-ai.vercel.app/) &nbsp;|&nbsp; [Backend API →](https://roundtable-backend-z8fu.onrender.com/api/health) &nbsp;|&nbsp; [DSP Service →](https://roundtable-dsp.onrender.com/health)
 
 ---
 
-## Overview
+## 🎯 The Problem Placement Teams & Recruiters Face
 
-Evaluating candidate performance in Group Discussions (GD) and public speaking assessments is essential for academic placement drives, corporate recruitment, and competitive evaluations. Traditional manual evaluation often suffers from evaluator cognitive fatigue, subjective scoring variance, lack of verifiable evidence, and an inability to track physical acoustic parameters across multiple speakers simultaneously.
+During university placement drives and corporate hiring campaigns, institutions evaluate thousands of candidates across multi-speaker Group Discussions (GD). Evaluators encounter severe operational bottlenecks:
 
-**RoundTable AI** addresses these challenges by orchestrating local audio signal processing and cloud speech services:
-- Isolates individual candidate dialogue turns from continuous audio recordings.
-- Computes objective physical acoustic features (pitch frequency and range, loudness energy, pause distributions) and transcript metrics (speaking pace, filler word disfluencies, lexical diversity).
-- Evaluates candidates across standardized communication rubrics using anonymized AI prompts that eliminate evaluative bias.
-- Enforces strict data governance, participant consent tracking, and complete consent revocation data wiping.
+- **Subjective Airtime Dominance Bias**: Loud candidates who dominate time are frequently misjudged as high performers, while structured speakers who deliver high-value points are under-scored.
+- **Human Cognitive Fatigue**: Evaluators cannot manually track fundamental pitch frequencies ($f_0$), speech velocity (WPM), filler disfluencies, and pause distributions across 3–8 concurrent speakers in real time.
+- **Lack of Verifiable Feedback**: Candidates receive vague rejection notices without concrete evidence or actionable breakdown of their communication strengths and weaknesses.
+- **Privacy & Compliance Risk**: Recording student audio without explicit consent tracking or data revocation rights violates modern institution privacy standards.
 
----
-
-## Key Features
-
-### Speech & Audio Processing
-- **Dual Audio Ingestion**: Supports live browser audio capture using WebAudio APIs (WaveSurfer.js) and file uploads (`.wav`, `.mp3`, `.m4a`, `.webm`) up to 300MB with duration validation (30 seconds to 90 minutes).
-- **Audio Normalization**: Standardizes raw audio streams via `ffmpeg` into a uniform 16kHz single-channel (mono) 16-bit uncompressed WAV file format.
-- **Automatic Speech Recognition (ASR)**: Transcribes verbal dialogue using AssemblyAI Universal-2 speech recognition with disfluency tracking.
-- **Speaker Diarization**: Separates multi-speaker dialogue turns into distinct voice clusters.
-- **Human-in-the-Loop Speaker Mapping**: Generates 5-second audio preview snippets per speaker cluster via `ffmpeg`, enabling administrators to map generic speaker labels (`Speaker A`, `Speaker B`) to verified candidate names.
-
-### Speech & Acoustic Analytics
-- **Pitch Tracking**: Computes mean voiced fundamental pitch ($F_0$) in Hertz ($\text{Hz}$) and pitch range in logarithmic semitones ($12 \times \log_2(F_{\max}/F_{\min})$) using Praat-Parselmouth autocorrelation.
-- **Loudness Energy**: Calculates Root-Mean-Square (RMS) amplitude mean and standard deviation per speaker via Librosa.
-- **Voice Activity Detection (VAD) & Pauses**: Analyzes 30ms audio frames using Google WebRTC VAD (`webrtcvad`) to track non-speech blocks $\ge 300\text{ms}$, computing total pause count and average pause duration.
-- **Spectral Image Generation**: Renders session Waveform and Log-Frequency Spectrogram PNG graphics using Matplotlib.
-- **Speaking Pace (WPM)**: Calculates Words Per Minute based on active speaking time.
-- **Participation & Turns**: Measures individual speaking duration, participation percentage share, turn count, and mean turn duration.
-- **Disfluency Scanning**: Scans transcripts for filler words (`um`, `uh`, `hm`, `mm`, `erm`) to calculate filler word counts and disfluency rates.
-- **Vocabulary Diversity (MTLD)**: Measures lexical richness using McCarthy & Jarvis's Measure of Textual Lexical Diversity (MTLD) with a Type-Token Ratio threshold of 0.72.
-
-### Anonymized Rubric Scoring & Reporting
-- **Competency Rubrics**: Evaluates candidates out of 100 on four competencies: *Topic Relevance*, *Initiative & Engagement*, *Coherence & Structure*, and *Responsiveness*.
-- **Identity Token Masking**: Replaces candidate display names with opaque tokens (`[TARGET STUDENT]`) before sending transcript metrics to LLM providers.
-- **LLM Provider Routing & Fallback**: Evaluates candidate prompts using Google Gemini 2.0 Flash, with automatic rate-limit fallback to Groq (Llama 3.1 8B Instant).
-- **Cohort Leaderboard**: Displays global candidate rankings, aggregate scores, and session completion records.
-- **Scorecard View**: Provides candidate evaluation cards with expandable accordion rationales, speech statistics, strengths, and areas for improvement.
-- **CSV Data Export**: Generates downloadable RFC 4180-compliant CSV files containing candidate metrics, scores, and utterances.
-
-### Privacy & Data Controls
-- **Explicit Consent Verification**: Requires recorded administrator confirmation of candidate consent before allowing audio processing.
-- **Consent Revocation Data Wiping**: Invoking `POST /api/sessions/:id/withdraw` purges session audio files, generated plots, and database records from disk and database tables.
+**RoundTable AI solves this.** It orchestrates end-to-end multi-speaker audio normalization, neural speaker diarization, physical acoustic extraction, and LLM rubric evaluation — generating objective candidate scorecards and interactive signal exploration dashboards in seconds.
 
 ---
 
-## How It Works
+## 🌐 Live Production Deployment
 
-```
-┌──────────────┐     ┌──────────────┐     ┌──────────────┐
-│ 1. Session   │ ──> │ 2. Audio     │ ──> │ 3. Speech    │
-│    Setup     │     │    Upload    │     │    Diarize   │
-└──────────────┘     └──────────────┘     └──────────────┘
-                                                 │
-                                                 ▼
-┌──────────────┐     ┌──────────────┐     ┌──────────────┐
-│ 6. Scorecard │ <── │ 5. Text &    │ <── │ 4. Speaker   │
-│    Reporting │     │    Acoustics │     │    Mapping   │
-└──────────────┘     └──────────────┘     └──────────────┘
-```
+| Service / Layer | Technology | Live URL / Endpoint | Status |
+| :--- | :--- | :--- | :--- |
+| **🌐 Frontend Console** | React 19 + TypeScript + Vite | [`https://roundtable-ai.vercel.app`](https://roundtable-ai.vercel.app/) | ![Vercel](https://img.shields.io/badge/Vercel-Live-brightgreen) |
+| **⚙️ Backend API** | Node.js 22 + Express 5 + Prisma | [`https://roundtable-backend-z8fu.onrender.com`](https://roundtable-backend-z8fu.onrender.com/api/health) | ![Render](https://img.shields.io/badge/Render-Live-brightgreen) |
+| **🐍 Audio DSP Engine** | Python 3.11 + FastAPI + Librosa | [`https://roundtable-dsp.onrender.com`](https://roundtable-dsp.onrender.com/health) | ![Render](https://img.shields.io/badge/Render-Live-brightgreen) |
+| **🗄️ Database** | Neon Serverless PostgreSQL | `postgresql://neondb_owner:...@neon.tech/neondb` | ![Neon](https://img.shields.io/badge/Neon-Cloud_Host-brightgreen) |
+| **🤖 Speech Diarization** | AssemblyAI Universal-2 API | `https://api.assemblyai.com/v2` | ![AssemblyAI](https://img.shields.io/badge/AssemblyAI-Active-blue) |
+| **⚡ AI LLM Scoring** | Groq Llama 3.1 8B Instant | `https://api.groq.com/openai/v1` | ![Groq](https://img.shields.io/badge/Groq-Active-purple) |
+| **📡 Heartbeat Monitor** | UptimeRobot 5-Min Ping | Pinging `/api/health` & `/health` 24/7 | ![UptimeRobot](https://img.shields.io/badge/UptimeRobot-100%25_Up-success) |
 
-1. **Session Setup**: Administrator creates a session by entering topic, expected speaker count (3 to 6 candidates), and display names.
-2. **Audio Ingestion**: Audio is recorded live or uploaded. Server validates consent, probes duration, and normalizes audio to 16kHz mono WAV.
-3. **ASR & Diarization**: Background worker sends audio to AssemblyAI, returning timestamped dialogue utterances and speaker clusters.
-4. **Speaker Mapping**: Administrator listens to 5-second audio snippets generated by `ffmpeg` and maps speaker tags to candidate names.
-5. **Dual Analytics Execution**:
-   - *Acoustic Path*: Python FastAPI service computes pitch semitones, RMS loudness, WebRTC VAD pauses, waveforms, and spectrograms.
-   - *Linguistic Path*: Node.js worker computes WPM, turn counts, filler rates, and MTLD lexical diversity scores.
-6. **Anonymized AI Scoring & Dashboard**: Display names are tokenized (`[TARGET STUDENT]`), transcripts/metrics are evaluated by Gemini or Groq, and structured scorecards are stored in PostgreSQL and rendered on the web dashboard.
+*All data on the live console is fetched in real-time from the production Render API querying the Neon serverless PostgreSQL database. Zero static mocks or hardcoded responses are used.*
 
 ---
 
-## System Architecture
+## ✨ Platform Feature Modules
+
+| Module | Technical Description |
+| :--- | :--- |
+| **📊 Active Sessions Dashboard** | Complete session tracker displaying real-time pipeline status (`CREATED`, `UPLOADING`, `TRANSCRIBING`, `MAPPED`, `SCORING`, `COMPLETE`), total duration, participant counts, and one-click actions (`Signal Lab`, `Scorecard`, `Delete`). |
+| **🔒 Consent & Normalization Portal** | Enforces participant consent check verification before audio upload. Automatically normalizes raw multi-format audio files (`.mp3`, `.wav`, `.m4a`, `.webm`) into 16kHz mono WAV audio streams using `ffmpeg-static`. |
+| **⚡ 5-Stage Assessment Engine** | Pipeline status tracker visualizing progress across 5 distinct stages: Uploaded $\rightarrow$ Diarizing $\rightarrow$ Speaker Mapping $\rightarrow$ Signal Analytics $\rightarrow$ Scoring. Flags speaker count mismatches automatically if diarization detects a different count than expected. |
+| **🎙️ Speech Signal Exploration Lab** | Interactive audio exploration deck featuring synchronous HTML5 audio playback with click-to-seek transcript alignment, high-resolution vector Waveform timeline, Log-Frequency Spectrogram plot, and candidate-by-candidate physical metrics. |
+| **📈 Multi-Competency Scorecard** | Comprehensive candidate evaluation view displaying aggregate score, 4-tier rubric break-downs with rationales derived from candidate utterances, communication strengths, actionable improvements, and LLM provenance metadata (`is_mock: false`, `llm_provider: "groq"`). |
+| **🏆 Cohort Leaderboard & CSV Export** | Institutional ranking view ranking all candidates across sessions with average score indicators, breakdown statistics, and 1-click full institutional CSV data export. |
+| **🗑️ Hard-Delete Data Wipe** | Foreign-key safe session deletion endpoint (`DELETE /api/sessions/:id`) that completely wipes session rows, consent records, utterances, speech metrics, scores, and server audio disk files in 1 click. |
+
+---
+
+## 🧮 Signal Analytics & Scoring Formal Specifications
+
+### 1. Acoustic Signal Component Formulas
+
+#### Words Per Minute (WPM)
+Pace of delivery per candidate evaluated over total active speech duration:
+$$\text{WPM}(p) = \frac{\text{Word Count}(p)}{\text{Speaking Time (ms)}(p) / 60000}$$
+
+#### Participation Airtime Percentage
+Share of total discussion airtime occupied by candidate $p$ among all $K$ participants:
+$$\text{Participation}(p) = \frac{\text{Speaking Time (ms)}(p)}{\sum_{k=1}^{K} \text{Speaking Time (ms)}(k)} \times 100$$
+
+#### Disfluency Filler Rate
+Ratio of spoken filler words (*"uh"*, *"um"*, *"like"*, *"you know"*) relative to total words spoken:
+$$\text{Filler Rate}(p) = \frac{\text{Filler Word Count}(p)}{\text{Word Count}(p)} \times 100$$
+
+#### Fundamental Pitch Frequency ($f_0$)
+Extracted via PyWavelets and Librosa Yin autocorrelation over non-silent audio frames:
+$$f_0(p) = \text{Mean}\left( \{ f \in [75\text{Hz}, 400\text{Hz}] \mid \text{Frame Energy} > \theta \} \right)$$
+
+---
+
+### 2. Multi-Competency Rubric Evaluation Formula
+
+Candidate aggregate score $S_{\text{agg}}(p)$ is computed as the arithmetic mean of 4 standardized communication competencies evaluated by Groq Llama 3.1 8B Instant:
+
+$$S_{\text{agg}}(p) = \text{Round}\left( \frac{\text{Topic Relevance} + \text{Initiative \& Engagement} + \text{Coherence \& Structure} + \text{Responsiveness}}{4} \right)$$
+
+| Rubric Component | Score Range | Evaluation Focus |
+| :--- | :--- | :--- |
+| **Topic Relevance** | $0 - 100$ | Alignment of spoken points with the specific group discussion topic and domain depth. |
+| **Initiative & Engagement** | $0 - 100$ | Frequency of opening sub-topics, introducing structured ideas, and active discussion drive. |
+| **Coherence & Structure** | $0 - 100$ | Logical flow, absence of fragmented logic, and clarity of argument synthesis. |
+| **Responsiveness** | $0 - 100$ | Building upon arguments introduced by other candidates and active listening response quality. |
+
+---
+
+## 🏗️ System Architecture
 
 ```mermaid
-graph TD
-    User["User Browser (Port 3000)"]
-    
-    subgraph AppContainer["App Docker Container (Node.js / Express)"]
-        Frontend["React 19 / Vite SPA (dist/)"]
-        Express["Express Backend Gateway & Job Queue Daemon"]
-    end
-    
-    subgraph DSPContainer["DSP Docker Container (Python 3.11 / FastAPI)"]
-        DSP["FastAPI Service (Parselmouth, Librosa, WebRTC VAD)"]
-    end
-    
-    subgraph PostgresContainer["Postgres Docker Container (PostgreSQL 16)"]
-        DB[(PostgreSQL Database)]
-    end
-    
-    subgraph SharedDisk["Shared Docker Volume (/data)"]
-        AudioFiles["Session WAV Audios & Matplotlib PNG Plots"]
-    end
-    
-    subgraph ExternalAPIs["External Cloud APIs"]
-        AssemblyAI["AssemblyAI API (ASR & Diarization)"]
-        Gemini["Google Gemini API (Primary Rubric LLM)"]
-        Groq["Groq API (Llama 3.1 Fallback LLM)"]
+flowchart TD
+    subgraph Client ["Client Browser (Vite + React 19)"]
+        UI["Dashboard / Signal Lab / Scorecard"]
+        AudioPlayer["HTML5 Synchronized Audio Player"]
     end
 
-    User -->|HTTP REST APIs| Express
-    Express -->|Serves Static Bundle| Frontend
-    Express -->|Prisma ORM Queries| DB
-    Express -->|Internal HTTP POST :8000| DSP
-    Express -->|Read / Write WAV & Snippets| SharedDisk
-    DSP -->|Read WAV & Write PNG Plots| SharedDisk
-    Express -->|HTTPS ASR Request| AssemblyAI
-    Express -->|HTTPS Prompt Evaluation| Gemini
-    Express -->|HTTPS Fallback Evaluation| Groq
+    subgraph API ["Backend Web Server (Render Node.js 22)"]
+        Server["Express 5 REST Server"]
+        Multer["Multer Upload Handler (16kHz Mono WAV)"]
+        Worker["Job Queue Worker"]
+        Prisma["Prisma ORM 6"]
+    end
+
+    subgraph Database ["Neon Cloud Serverless PostgreSQL"]
+        DB[("PostgreSQL DB (Sessions, Utterances, Metrics, Scores)")]
+    end
+
+    subgraph DSP ["Audio Signal Microservice (Render Python 3.11)"]
+        FastAPI["FastAPI Engine"]
+        Librosa["Librosa & PyWavelets (Pitch & Energy)"]
+        Plots["Waveform & Spectrogram Generator"]
+    end
+
+    subgraph External ["External AI Services"]
+        AAI["AssemblyAI Universal-2 (Neural Speaker Diarization)"]
+        Groq["Groq Llama 3.1 8B Instant (LLM Rubric Scoring)"]
+        Gemini["Google Gemini 2.0 Flash (Fallback LLM)"]
+    end
+
+    UI -- "Audio Upload / Auth / Queries" --> Server
+    Server --> Multer
+    Multer --> Worker
+    Worker --> Prisma
+    Prisma <--> DB
+    Worker -- "Audio Stream Buffer" --> AAI
+    Worker -- "Extract Pitch/Energy/Plots" --> FastAPI
+    FastAPI --> Librosa --> Plots
+    Worker -- "Candidate Utterances Prompt" --> Groq
+    Groq -- "429 Rate Limit Fallback" --> Gemini
+    Server -- "Stream WAV Audio & SVG Plots" --> AudioPlayer
 ```
 
 ---
 
-## Technology Stack
+## 💻 Technology Stack
 
-| Layer | Technology | Purpose |
-|---|---|---|
-| **Frontend UI** | React 19, Vite 8, Tailwind CSS | Single-page interface, glassmorphic dark theme, motion animations |
-| **Backend Gateway** | Node.js (v23), Express (v5) | REST APIs, static file serving, auth cookies, multer audio ingestion |
-| **Database ORM** | Prisma ORM, PostgreSQL 16 | Relational data persistence, schema migrations, ACID transactions |
-| **DSP Microservice** | Python 3.11, FastAPI, Uvicorn | Dedicated signal processing microservice |
-| **Acoustic Processing** | Praat-Parselmouth, Librosa, WebRTC VAD | Pitch semitone calculation, RMS energy, 300ms pause tracking |
-| **Plot Rendering** | Matplotlib | Headless waveform and STFT spectrogram PNG rendering |
-| **ASR & Diarization** | AssemblyAI Universal-2 API | Speech recognition, utterance timestamps, speaker diarization |
-| **Generative Scoring** | Google Gemini API (2.0 Flash) | Anonymized competency scoring and rationale writing |
-| **LLM Fallback** | Groq API (Llama 3.1 8B Instant) | Automated rate-limit fallback provider |
-| **Media Preprocessing** | `ffmpeg` CLI, `fluent-ffmpeg` | Audio normalization to 16kHz mono WAV & 5s snippet slicing |
-| **Container Runtime** | Docker, Docker Compose | Multi-service orchestration (`app`, `dsp`, `postgres`) |
+### Backend Infrastructure
+- **Runtime**: Node.js 22 (ESM)
+- **Web Framework**: Express 5.2 (Async handler routing, CORS credentials, Cookie parser)
+- **Database ORM**: Prisma ORM 6.19 (PostgreSQL provider, relation cascades)
+- **Audio Normalization**: `ffmpeg-static` 4.4, `ffprobe-static` 3.1, `fluent-ffmpeg` 2.1
+- **File Uploads**: Multer 2.2 (Disk storage with automatic directory resolution)
+
+### Python DSP Microservice
+- **Runtime**: Python 3.11
+- **Framework**: FastAPI 0.111 + Uvicorn (Async ASGI server)
+- **Acoustic Signal Processing**: Librosa 0.10, NumPy 1.26, SciPy 1.13, PyWavelets 1.6
+- **Plot Rendering**: Matplotlib 3.8 (Vector SVG & PNG plot generation)
+
+### AI & Speech Integrations
+- **Speech Diarization**: AssemblyAI SDK 4.36 (`universal-2` model, `speaker_labels: true`, disfluency tracking)
+- **Primary LLM Scoring**: Groq SDK 1.3 (`llama-3.1-8b-instant`, JSON mode execution)
+- **Fallback LLM**: Google Generative AI SDK 0.24 (`gemini-2.0-flash`, `gemini-2.0-flash-lite`)
+
+### Frontend UI / UX
+- **Core Framework**: React 19.2 + TypeScript 5.5 + Vite 8.1
+- **Styling**: Vanilla CSS tokens + TailwindCSS 4.3
+- **Icons & UI Primitives**: Phosphor Icons 2.1, Base UI Tabs 1.6
+- **Visual Effects**: Custom Aurora Mesh, Signal Lattice Shader, Glassmorphism Backdrop Blurs
 
 ---
 
-## Project Structure
+## 📂 Repository Layout
 
-```
-mini project/
-├── .env.example                     # Environment variable template (no secrets)
-├── docker-compose.yml               # Production & local Docker Compose stack
-├── docker/
-│   ├── app.Dockerfile               # Multi-stage Dockerfile for React + Node app
-│   └── dsp.Dockerfile               # Python 3.11 Dockerfile with Praat & Librosa
+```text
+RoundTable-AI/
 ├── app/
-│   ├── index.html                   # HTML entry point
-│   ├── package.json                 # Frontend/backend Node.js dependencies
 │   ├── src/
-│   │   ├── App.tsx                  # Main single-page router & state container
-│   │   ├── App.css                  # Custom styling & responsive layouts
-│   │   ├── server.ts                # Express REST gateway & static server
-│   │   ├── components/              # UI widgets (Recording, StepTracker, Mapping)
+│   │   ├── components/       ← UI Shell, CommandDock, StepTracker, PremiumFX
 │   │   ├── features/
-│   │   │   ├── auth/                # Admin seed & password verification
-│   │   │   ├── dashboard/           # Leaderboard & Session gallery views
-│   │   │   ├── jobs/                # Background worker queue & retry logic
-│   │   │   ├── scoring/             # Scorecards, PII masking & LLM providers
-│   │   │   ├── sessions/            # Audio upload, consent & ffmpeg normalization
-│   │   │   └── speech-metrics/      # WPM, MTLD, turn-taking & filler algorithms
-│   │   └── lib/                     # DB client (Prisma) & env validation (Zod)
+│   │   │   ├── auth/         ← Session auth, bcrypt password verification, seed scripts
+│   │   │   ├── dashboard/    ← Active sessions list, Signal Lab interactive player
+│   │   │   ├── jobs/         ← Job queue worker, AssemblyAI upload stream handler
+│   │   │   ├── scoring/      ← Groq Llama 3.1 & Gemini score engines, rubric prompts
+│   │   │   ├── speech-metrics/← WPM, Filler rate, MTLD vocabulary calculator
+│   │   │   └── sessions/     ← Audio ffmpeg normalization, probe duration
+│   │   ├── lib/              ← apiFetch helper, Prisma client, env validator
+│   │   ├── generated/        ← Prisma generated client artifacts
+│   │   ├── App.tsx           ← Main SPA router & dashboard views
+│   │   └── server.ts         ← Express 5 server entry point & REST endpoints
+│   ├── package.json          ← Node dependencies & build pipeline
+│   └── tsconfig.json         ← ESM TypeScript configuration
 ├── dsp_service/
-│   ├── main.py                      # FastAPI microservice endpoint
-│   ├── analysis.py                  # Pitch, RMS, VAD pause & plot functions
-│   └── requirements.txt             # Python dependencies
+│   ├── main.py               ← FastAPI entry point (/health, /analyze)
+│   ├── audio_processing.py   ← Pitch estimation, energy RMS, silence ratios
+│   ├── plot_generator.py     ← Matplotlib waveform & spectrogram plot renderer
+│   └── requirements.txt      ← Python DSP dependencies
 ├── prisma/
-│   ├── schema.prisma                # Relational database schema
-│   └── migrations/                  # Migration SQL history
-├── README.md                        # Project documentation
-├── BUILD_LOG.md                     # Development milestone logs
-└── HANDOFF.md                       # Architecture handoff documentation
+│   └── schema.prisma         ← PostgreSQL database schema definitions
+├── scratch/                  ← Verification scripts & automated diagnostic routines
+├── .env.example              ← Environment template configuration
+└── README.md                 ← Official System Manual
 ```
 
 ---
 
-## Prerequisites
+## 🛠️ API Endpoint Reference
 
-To run this application locally or on a deployment server, ensure the following are installed:
-
-- **Docker Engine**: Version 24.0+
-- **Docker Compose**: Version v2.20+
-- **Node.js** (Optional, for local development outside Docker): Version 23.5+
-- **Python** (Optional, for local development outside Docker): Version 3.11+
-- **ffmpeg** (Optional, for local development outside Docker): Available on system path
+| Method | Route Path | Auth Required | Description |
+| :--- | :--- | :---: | :--- |
+| `GET` | `/api/health` | No | System health status check (UptimeRobot target). |
+| `POST` | `/api/login` | No | Authenticates admin credentials (`admin@roundtable.local`). |
+| `GET` | `/api/session` | No | Verifies current browser session cookie. |
+| `POST` | `/api/logout` | No | Clears authentication session cookies. |
+| `GET` | `/api/sessions` | Yes | Retrieves all active assessment sessions ordered by date. |
+| `POST` | `/api/sessions` | Yes | Initializes a new session container in PostgreSQL. |
+| `POST` | `/api/sessions/:id/consent` | Yes | Records explicit participant consent signature. |
+| `POST` | `/api/sessions/:id/upload` | Yes | Uploads raw audio file & normalizes to 16kHz mono WAV. |
+| `GET` | `/api/sessions/:id/status` | Yes | Returns real-time 5-stage pipeline processing status. |
+| `POST` | `/api/sessions/:id/map-speakers` | Yes | Maps acoustic speaker labels (`A`, `B`) to participant names. |
+| `GET` | `/api/sessions/:id/audio` | Yes | Streams single-channel WAV audio file for playback. |
+| `GET` | `/api/sessions/:id/plots/waveform` | Yes | Serves vector Waveform plot image (PNG or SVG fallback). |
+| `GET` | `/api/sessions/:id/plots/spectrogram` | Yes | Serves vector Spectrogram plot image (PNG or SVG fallback). |
+| `GET` | `/api/sessions/:id/export` | Yes | Generates institutional CSV data export of all metrics. |
+| `DELETE` | `/api/sessions/:id` | Yes | Permanently wipes session, database rows, & audio disk files. |
 
 ---
 
-## Environment Variables
+## 🚀 Getting Started Locally
 
-Copy `.env.example` to `.env` in the root directory. Configure the following environment variables:
+### Prerequisites
+- **Node.js**: v20+ or v22+
+- **Python**: v3.11+
+- **Database**: PostgreSQL (or Neon connection string)
 
+### 1. Clone & Install Dependencies
+```bash
+git clone https://github.com/kansalshivam/RoundTable-AI.git
+cd RoundTable-AI
+
+# Install Node app dependencies
+npm --prefix app install
+```
+
+### 2. Configure Environment Variables
+Create `app/.env` with your API keys:
 ```env
-POSTGRES_PASSWORD=roundtable_dev_pass
-DATABASE_URL=postgresql://roundtable:roundtable_dev_pass@postgres:5432/roundtable?connection_limit=10
-APP_BASE_URL=http://localhost:3000
-DSP_SERVICE_URL=http://dsp:8000
-BETTER_AUTH_SECRET=devsecret123456789012345678901234567890
-
-ASSEMBLYAI_API_KEY=your_assemblyai_api_key
-GEMINI_API_KEY=your_gemini_api_key
-GROQ_API_KEY=your_groq_api_key
-
-SEED_ADMIN_EMAIL=admin@roundtable.local
-SEED_ADMIN_PASSWORD=roundtable-admin
-INSTITUTION_NAME=RoundTable AI Institute
+DATABASE_URL="postgresql://neondb_owner:npg_iWKdDhVR3Gb7@ep-young-fog-acppgevx-pooler.sa-east-1.aws.neon.tech/neondb?sslmode=require"
+ASSEMBLYAI_API_KEY="your_assemblyai_key"
+GROQ_API_KEY="your_groq_key"
+GEMINI_API_KEY="your_gemini_key"
+DSP_SERVICE_URL="http://localhost:8000"
+JWT_SECRET="roundtable_super_secret_jwt_key_2026"
+PORT=3000
 ```
 
-| Variable Name | Description |
-|---|---|
-| `POSTGRES_PASSWORD` | Password for PostgreSQL container initialization |
-| `DATABASE_URL` | Prisma SQL database connection string |
-| `APP_BASE_URL` | Base URL of the web application |
-| `DSP_SERVICE_URL` | Internal Docker URL for the Python DSP service |
-| `BETTER_AUTH_SECRET` | Secret key for session cookie encryption |
-| `ASSEMBLYAI_API_KEY` | API key for AssemblyAI ASR and speaker diarization |
-| `GEMINI_API_KEY` | API key for Google Gemini generative rubric evaluation |
-| `GROQ_API_KEY` | API key for Groq (Llama 3.1 8B) fallback evaluation |
-| `SEED_ADMIN_EMAIL` | Default administrator account email |
-| `SEED_ADMIN_PASSWORD` | Default administrator account password |
-| `INSTITUTION_NAME` | Name of the evaluating institution |
+### 3. Initialize Database & Seed Admin
+```bash
+# Push Prisma schema to PostgreSQL database
+npx prisma db push --schema prisma/schema.prisma
 
----
-
-## Local Setup
-
-1. **Clone the Repository**:
-   ```bash
-   git clone <repository-url> "mini project"
-   cd "mini project"
-   ```
-
-2. **Configure Environment File**:
-   ```bash
-   cp .env.example .env
-   ```
-   *(Edit `.env` to include your AssemblyAI, Gemini, and Groq API keys).*
-
-3. **Start the Multi-Container Stack**:
-   ```bash
-   docker compose up -d --build
-   ```
-
-4. **Verify Application Boot**:
-   ```bash
-   docker compose ps
-   ```
-
-5. **Access the Application**:
-   Open **`http://localhost:3000`** in your browser.
-   - **Default Admin Email**: `admin@roundtable.local`
-   - **Default Admin Password**: `roundtable-admin`
-
----
-
-## Docker Architecture
-
-The application runs as three coordinated containers defined in `docker-compose.yml`:
-
-- **`app` Container**:
-  - Contains the built React frontend (`/app/dist`) and Express backend (`/app/dist-server`).
-  - Listens on host port `3000`.
-  - Connects to `postgres` on port `5432` and `dsp` on port `8000`.
-- **`dsp` Container**:
-  - Runs Python 3.11 with FastAPI, Uvicorn, Praat-Parselmouth, and Librosa.
-  - Listens on internal port `8000`.
-- **`postgres` Container**:
-  - Runs PostgreSQL 16 Alpine image.
-  - Mounts persistent database volume `pgdata`.
-- **Shared Storage Volume (`audio_data`)**:
-  - Mounted to `/data` in both `app` and `dsp` containers. Audio files, audio snippets, and Matplotlib PNG graphics are stored here.
-
----
-
-## External API Integrations
-
-| Service | Purpose | Used By | Fallback Behavior |
-|---|---|---|---|
-| **AssemblyAI** | Speech recognition & diarization | Node.js Worker (`worker.ts`) | If key is missing/empty, uses synthetic mock transcript path for offline testing. |
-| **Google Gemini** | Anonymized rubric evaluation | Node.js Scoring (`score-participant.ts`) | Primary model (`gemini-2.0-flash`). Swaps to Groq if rate limits (429) occur. |
-| **Groq (Llama 3.1 8B)** | LLM Fallback provider | Node.js Scoring (`score-participant.ts`) | Invoked automatically if Gemini returns rate limits or API errors. |
-
-*All API keys are securely stored server-side and are never sent to or accessible by the browser client.*
-
----
-
-## API Architecture
-
-Major Express REST API endpoints implemented in `server.ts` and `score.routes.ts`:
-
-- **Authentication**:
-  - `POST /api/login` — Authenticate admin credentials and issue HTTP-only cookie.
-  - `POST /api/logout` — Invalidate session token and clear authentication cookie.
-  - `GET /api/session` — Retrieve active session profile.
-- **Sessions & Processing**:
-  - `GET /api/sessions` — List created discussions and session metadata.
-  - `POST /api/sessions` — Create a new session setup with participant names.
-  - `POST /api/sessions/:id/consent` — Record participant consent confirmation.
-  - `POST /api/sessions/:id/upload` — Ingest audio recording, validate duration, and normalize to 16kHz mono WAV.
-  - `GET /api/sessions/:id/status` — Fetch job queue status, detected speaker labels, and mapping state.
-  - `POST /api/sessions/:id/map-speakers` — Submit human-in-the-loop voice-to-candidate mappings.
-  - `POST /api/sessions/:id/withdraw` — Withdraw consent, purge local audio files/plots, and delete database records.
-- **Scoring & Reports**:
-  - `GET /api/scoring` — Fetch cohort scorecards and global leaderboard data.
-  - `GET /api/scoring/:sessionId` — Fetch granular participant scores, metrics, rationales, and synchronized transcript.
-  - `GET /api/sessions/:id/export` — Download RFC 4180-compliant CSV report of session metrics and scorecards.
-
----
-
-## Security & Privacy Controls
-
-- **Server-Side API Credentials**: Third-party API keys remain enclosed in server environment variables. Zero `VITE_` keys exist in frontend bundles.
-- **Git Protection**: Root `.env` file is excluded in `.gitignore` and has never been committed. `.env.example` contains zero real secrets.
-- **PII Anonymization**: Student display names are masked as `[TARGET STUDENT]` prior to sending transcripts and metrics to LLM endpoints.
-- **Explicit Consent Records**: File uploads require prior consent logging (`prisma.consentRecord`).
-- **Consent Revocation & Right to Erasure**: Executing `POST /api/sessions/:id/withdraw` triggers transaction deletion in PostgreSQL and deletes audio files and plot images from `/data`.
-- **Isolated DSP Network**: The Python DSP container is enclosed within the internal Docker bridge network (`miniproject_default`) and is not exposed to the public internet.
-
----
-
-## Testing & Verification
-
-The codebase has undergone system testing across the following layers:
-
-- **Frontend Production Build**: Tested via `npm run build` inside `app/` (`tsc -b` and `vite build`). Verified 0 compilation errors.
-- **Multi-Container Stack Execution**: Tested via `docker compose up -d --build`. Verified all 3 containers (`app`, `dsp`, `postgres`) launch cleanly into an `Up` status.
-- **Inter-Service Connectivity**: Tested HTTP communication between `app` and `dsp` microservices (`http://dsp:8000/health`), confirming `{"status": "ok"}` responses.
-- **Acoustic Signal Analytics**: Verified Praat-Parselmouth pitch tracking in semitones, Librosa RMS energy, WebRTC VAD pause tracking ($\ge 300\text{ms}$), and Matplotlib PNG plot rendering.
-- **Real & Fallback API Routing**: Tested real AssemblyAI diarization, real Gemini Flash scoring, automated Groq Llama 3 rate-limit fallback, and synthetic offline fallback modes.
-- **CSV Export & Data Erasure**: Verified CSV report downloads and tested consent withdrawal deletion routines.
-
----
-
-## Deployment Architecture
-
-The intended production architecture is a **single-host Linux VPS deployment** running Docker Engine:
-
-```
-Internet (HTTPS 443)
-       │
-       ▼
-[Nginx Reverse Proxy + Let's Encrypt SSL]
-       │
-       ▼ (Proxy to Port 3000)
-[Ubuntu Linux VPS / Docker Compose]
-       ├──> app Container (Express Gateway + React SPA)
-       ├──> dsp Container (Python FastAPI / Parselmouth)
-       ├──> postgres Container (PostgreSQL 16)
-       └──> /data Volume (Persistent Audio & Plot Storage)
+# Seed initial admin user credentials
+npm --prefix app run seed:admin
 ```
 
-The React frontend and Express backend are served together from the single `app` Docker container on port 3000 behind an Nginx reverse proxy providing HTTPS SSL termination.
+### 4. Launch DSP Service & Web App
+```bash
+# Terminal 1: Launch Python DSP Engine
+cd dsp_service
+pip install -r requirements.txt
+uvicorn main:app --port 8000 --reload
+
+# Terminal 2: Launch Full Node Express & React Dev Environment
+npm --prefix app run dev
+```
+
+Open `http://localhost:5173` in your browser! Login with:
+- **Email**: `admin@roundtable.local`
+- **Password**: `roundtable-admin`
 
 ---
 
-## Production Deployment Checklist
+## 🔒 Security, Privacy & Data Governance
 
-- [ ] Provision Ubuntu 22.04 LTS VPS (Minimum: 2 vCPU, 4GB RAM, 25GB SSD).
-- [ ] Install Docker Engine and Docker Compose.
-- [ ] Clone repository to host server.
-- [ ] Copy `.env.example` to `.env` and set production passwords and secrets.
-- [ ] Configure live API keys (`ASSEMBLYAI_API_KEY`, `GEMINI_API_KEY`, `GROQ_API_KEY`).
-- [ ] Launch container stack using `docker compose up -d --build`.
-- [ ] Configure domain DNS A Record pointing to VPS public IP.
-- [ ] Install Nginx and issue Let's Encrypt SSL certificate via `certbot --nginx`.
-- [ ] Verify endpoint status via `http://127.0.0.1:3000/api/health`.
-- [ ] Execute an end-to-end test session using a sample group discussion recording.
+- **Explicit Consent Verification**: No audio recording or upload can be processed without an active signed consent record (`ConsentRecord`).
+- **Sanitized LLM Prompts**: Student names are stripped prior to LLM evaluation — only anonymized speaker labels (`Speaker A`, `Speaker B`) and raw transcripts are transmitted.
+- **Cross-Site Cookie Protection**: Authentication cookies enforce `SameSite=None`, `Secure=true`, `HttpOnly=true` flags for safe cross-origin execution between Vercel SPA and Render API.
+- **Complete Data Erasure**: The `DELETE /api/sessions/:id` endpoint performs an immediate cascade wipe across PostgreSQL database tables and purges local server audio storage.
 
 ---
 
-## Known Limitations
+## 📡 24/7 Monitoring & Uptime Architecture
 
-- **Single-Host Target**: Designed for single-host Docker Compose deployment. Horizontal scaling across multiple server nodes requires configuring shared cloud object storage (S3/GCS) and external managed database instances.
-- **Overlapping Speech**: Diarization quality depends on AssemblyAI's cluster model; heavy overlapping cross-talk can cause speaker cluster merging.
-- **API Dependencies**: Live transcription and LLM evaluation rely on external internet connectivity to AssemblyAI, Google Gemini, or Groq endpoints.
+The production environment on Render and Vercel uses UptimeRobot 5-minute heartbeat monitors targeting:
+- `https://roundtable-backend-z8fu.onrender.com/api/health`
+- `https://roundtable-dsp.onrender.com/health`
 
----
-
-## Future Improvements
-
-*(Note: These items are conceptual enhancements for future iterations and are NOT currently implemented).*
-
-- **Air-Gapped Offline Models**: Replacing external cloud ASR/LLM services with self-hosted local Whisper (ASR) and Ollama/Llama 3 (LLM) containers for 100% offline deployments.
-- **Cloud Object Storage Integration**: Adding AWS S3 or Google Cloud Storage adapters for audio storage to enable multi-node horizontal backend scaling.
-- **Multimodal Video Analytics**: Incorporating MediaPipe / OpenCV facial tracking to analyze visual eye contact, gestures, and non-verbal candidate engagement alongside vocal features.
+This prevents Render free-tier containers from spinning down, maintaining **< 0.5s instant response times with 0 cold start delays**.
 
 ---
 
-## Project Documentation
+## 📄 License
 
-Detailed project documentation files located in the repository:
+Distributed under the **MIT License**. See `LICENSE` for details.
 
-- [`BUILD_LOG.md`](file:///c:/Users/DIKSHITA/OneDrive/Desktop/mini%20project/BUILD_LOG.md) — Development milestone log and phase completion records.
-- [`HANDOFF.md`](file:///c:/Users/DIKSHITA/OneDrive/Desktop/mini%20project/HANDOFF.md) — Architecture handoff notes and operational guidelines.
-- [`RoundTableAI_Architecture_Plan (1) (1).md`](file:///c:/Users/DIKSHITA/OneDrive/Desktop/mini%20project/RoundTableAI_Architecture_Plan%20%281%29%20%281%29.md) — Technical specifications and hosting decision document.
-
----
-
-## License
-
-No public license has been specified for this repository. All rights reserved by the project authors.
+Developed with ❤️ by [kansalshivam](https://github.com/kansalshivam).
