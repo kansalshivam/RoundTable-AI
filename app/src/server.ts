@@ -116,7 +116,7 @@ app.use("/api/scoring", requireAuth, scoreRouter);
 const upload = multer({
   storage: multer.diskStorage({
     destination: (req, _file, cb) => {
-      const dir = `/data/sessions/${req.params.id}/tmp`;
+      const dir = path.resolve(process.cwd(), "data/sessions", String(req.params.id), "tmp");
       fs.mkdirSync(dir, { recursive: true });
       cb(null, dir);
     },
