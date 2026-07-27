@@ -26,7 +26,7 @@ class AnalyzeRequest(BaseModel):
     audio_path: str
     speakers: list[SpeakerRequest]
 
-@app.get("/health")
+@app.api_route("/health", methods=["GET", "HEAD"])
 async def health():
     return {"status": "ok"}
 
