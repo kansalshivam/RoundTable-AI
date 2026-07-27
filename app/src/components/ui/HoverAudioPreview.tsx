@@ -63,7 +63,7 @@ export function HoverAudioPreview({ participantName, speakerLabel, audioUrl }: H
       onMouseLeave={() => setIsHovered(false)}
       onClick={() => setIsHovered(!isHovered)}
     >
-      {audioUrl && <audio ref={audioRef} src={audioUrl} preload="auto" />}
+      {audioUrl && <audio ref={audioRef} src={audioUrl} crossOrigin="use-credentials" preload="auto" />}
       
       <div className="flex items-center space-x-3 z-10 relative">
         <div className="w-10 h-10 rounded-full bg-[var(--primary-soft)] text-[var(--color-lavender-600)] flex items-center justify-center font-bold shadow-sm group-hover:shadow-md transition-shadow">

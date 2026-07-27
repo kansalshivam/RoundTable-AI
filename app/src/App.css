@@ -574,13 +574,23 @@ label {
 
 /* ── Transcript ── */
 .transcript-list {
-  max-height: 420px;
+  max-height: 480px;
   overflow-y: auto;
-  display: grid;
-  gap: 8px;
+  overscroll-behavior-y: contain;
+  touch-action: pan-y;
+  -webkit-overflow-scrolling: touch;
+  scrollbar-width: thin;
+  scrollbar-color: var(--color-lavender-500) rgba(27,17,64,0.8);
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
   margin-top: 12px;
+  padding-right: 6px;
   border: 0;
   background: transparent;
+  position: relative;
+  z-index: 30;
+  pointer-events: auto;
 }
 
 .transcript-row {

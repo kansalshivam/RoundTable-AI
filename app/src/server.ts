@@ -427,13 +427,13 @@ app.get("/api/sessions/:id/speakers/preview/:label", requireAuth, async (req, re
       return;
     }
 
-    const previewDir = `/data/sessions/${id}/previews`;
+    const previewDir = path.resolve(process.cwd(), "data/sessions", id, "previews");
     fs.mkdirSync(previewDir, { recursive: true });
-    const previewPath = `${previewDir}/preview_${label}.wav`;
+    const previewPath = path.join(previewDir, `preview_${label}.wav`);
 
     if (!fs.existsSync(previewPath)) {
       const startSec = firstUtt.start_ms / 1000;
-      const durationSec = Math.min((firstUtt.end_ms - firstUtt.start_ms) / 1000, 5);
+      const durationSec = Math.min(Math.max((firstUtt.end_ms - firstUtt.start_ms) / 1000, 1.5), 5);
 
       await new Promise<void>((resolve, reject) => {
         ffmpeg(session.audio_local_path!)

@@ -970,7 +970,7 @@ function App() {
                           <HoverAudioPreview 
                             participantName={`Speaker ${label}`}
                             speakerLabel={label}
-                            audioUrl={`/api/sessions/${activeSessionId}/speakers/preview/${label}`}
+                            audioUrl={`${import.meta.env.VITE_API_URL || ""}/api/sessions/${activeSessionId}/speakers/preview/${label}`}
                           />
                           <select
                             className="px-4 py-2.5 bg-slate-800 border border-slate-700 rounded-lg text-white focus:outline-none focus:ring-2 focus:ring-teal-500 transition-all w-full text-sm"
@@ -1129,7 +1129,7 @@ function App() {
                   {/* Interactive transcript section */}
                   <div>
                     <h3 style={{ marginBottom: "12px", color: "var(--text)" }}>Session Transcript (Click to Seek)</h3>
-                    <div className="transcript-list">
+                    <div className="transcript-list" onWheel={(e) => e.stopPropagation()}>
                       {sessionStatus.session.utterances && sessionStatus.session.utterances.length > 0 ? (
                         sessionStatus.session.utterances.map((u: any) => {
                           const badge = getSpeakerBadgeStyle(u.speaker_label);

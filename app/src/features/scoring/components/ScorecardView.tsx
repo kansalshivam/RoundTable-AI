@@ -181,7 +181,7 @@ export function ScorecardView({ sessionId }: { sessionId: string }) {
       <div className="rt-card transcript-card">
         <div className="card-heading"><h3>Synchronized transcript</h3></div>
         {hasMockTranscript && <span className="notice-pill mock">Synthetic/demo transcript</span>}
-        <div className="transcript-list">
+        <div className="transcript-list" onWheel={(e) => e.stopPropagation()}>
           {data.utterances.map((utterance: any) => {
             const participant = data.participants.find((p: any) => p.speaker_label === utterance.speaker_label);
             return (
