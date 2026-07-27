@@ -19,6 +19,7 @@ import { normalizeToWav16kMono, probeDuration } from "./features/sessions/normal
 import { startWorker } from "./features/jobs/worker.js";
 import { startRetentionJob } from "./features/jobs/retention.js";
 import { webhookRouter } from "./features/transcription/assembly-webhook.js";
+import { checkProviderHealth } from "./lib/provider-health.js";
 import scoreRouter from "./features/scoring/score.routes.js";
 const app = express();
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
@@ -673,6 +674,11 @@ app.get("/api/sessions/:id/plots/spectrogram", requireAuth, async (req, res) => 
   }
 });
 
+app.get("/api/system/provider-status", requireAuth, async (_req, res) => {
+  const health = await checkProviderHealth();
+  res.json(health);
+});
+
 app.get("/*splat", (_req, res) => {
   res.sendFile(path.join(staticDir, "index.html"));
 });
@@ -680,8 +686,11 @@ app.get("/*splat", (_req, res) => {
 const port = Number(process.env.PORT ?? 3000);
 
 seedAdmin()
-  .then(() => {
+  .then(async () => {
+    const health = await checkProviderHealth();
     app.listen(port, () => {
+      console.log(`[Provider Status] AssemblyAI: ${health.assemblyai.status} | Gemini: ${health.gemini.status} | Groq: ${health.groq.status}`);
+
       startWorker();
       startRetentionJob();
       console.log(`RoundTable AI app listening on ${port}`);
