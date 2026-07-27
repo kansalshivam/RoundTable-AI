@@ -128,7 +128,7 @@ export async function seedGoldenSession(adminId: string) {
       ]
     });
 
-    // Seed Scores
+    // Seed Scores (Enforces invariant: is_mock === true iff llm_provider === "mock")
     await tx.score.createMany({
       data: [
         {
@@ -146,7 +146,7 @@ export async function seedGoldenSession(adminId: string) {
           flagged_low_data: false,
           communication_summary_strengths: ["Strong logical arguments", "Active discussion leading"],
           communication_summary_improvements: ["Can pause for emphasis occasionally"],
-          llm_provider: "gemini-flash-lite",
+          llm_provider: "mock",
           is_mock: true
         },
         {
@@ -164,7 +164,7 @@ export async function seedGoldenSession(adminId: string) {
           flagged_low_data: false,
           communication_summary_strengths: ["Constructive building", "Empathetic active listening"],
           communication_summary_improvements: ["Try speaking with more vocal range"],
-          llm_provider: "gemini-flash-lite",
+          llm_provider: "mock",
           is_mock: true
         },
         {
@@ -182,7 +182,7 @@ export async function seedGoldenSession(adminId: string) {
           flagged_low_data: false,
           communication_summary_strengths: ["Excellent boundary validation", "Strong summary skills"],
           communication_summary_improvements: ["Could initiate early arguments sooner"],
-          llm_provider: "gemini-flash-lite",
+          llm_provider: "mock",
           is_mock: true
         }
       ]

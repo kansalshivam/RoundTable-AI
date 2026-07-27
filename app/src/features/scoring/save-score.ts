@@ -94,6 +94,14 @@ Please provide the detailed JSON grading for the target student.`;
 
       const flagged = (metric?.speaking_time_ms || 0) < 30000 || (metric?.word_count || 0) < 50;
 
+      const isMock = response.provider === "mock";
+      const provider = response.provider;
+
+      // Invariant assertion: is_mock === true iff llm_provider === "mock"
+      if ((isMock && provider !== "mock") || (!isMock && provider === "mock")) {
+        throw new Error(`Score provenance invariant violation: is_mock=${isMock} cannot be paired with llm_provider=${provider}`);
+      }
+
       await prisma.score.create({
         data: {
           session_id: sessionId,
@@ -110,8 +118,8 @@ Please provide the detailed JSON grading for the target student.`;
           flagged_low_data: flagged,
           communication_summary_strengths: parsed.communication_summary_strengths || [],
           communication_summary_improvements: parsed.communication_summary_improvements || [],
-          llm_provider: response.provider,
-          is_mock: response.provider === "mock"
+          llm_provider: provider,
+          is_mock: isMock
         }
       });
       console.log(`Scoring saved for ${participant.display_name}`);
