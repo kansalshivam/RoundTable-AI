@@ -7,3 +7,14 @@ data/
 .env
 .DS_Store
 .gemini/
+
+# Architecture, internal planning docs & scratch files
+RoundTableAI_*.md
+AGENT_EXECUTION_RULES*.md
+PROJECT_COMPLETE_SPECIFICATION.md
+BUILD_LOG.md
+HANDOFF.md
+rubric_validation.md
+cookie.txt
+start-roundtable.bat
+*.log
