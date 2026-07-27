@@ -5,7 +5,7 @@
   "type": "module",
   "scripts": {
     "dev": "vite",
-    "build": "npx prisma generate --schema ../prisma/schema.prisma && vite build && tsc -p tsconfig.server.json",
+    "build": "npx prisma generate --schema ../prisma/schema.prisma && vite build && tsc -p tsconfig.server.json && node -e \"require('fs').cpSync('src/generated', 'dist-server/generated', {recursive: true})\"",
     "lint": "oxlint",
     "preview": "vite preview",
     "start": "node dist-server/server.js",
