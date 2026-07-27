@@ -49,8 +49,7 @@
 | Anime.js v3 | Scorecard rubric entrance only | Dedicated synchronized timeline |
 | GSAP + ScrollTrigger | Available for scroll-scrubbed/pinned sections | Heavy timeline sequences |
 | Lenis | Smooth inertia scrolling (available sitewide) | Buttery scroll feel |
-| Phosphor Icons | All static icons | Primary MIT icon family |
-| Tabler / Lucide / Iconoir | Cherry-pick alternate icon styles | Secondary icon sets for variety |
+| `@phosphor-icons/react` | All static icons sitewide | Single standardized MIT icon system |
 | Base UI Tabs | Record/upload mode switch | Accessible headless tabs |
 | Interactive grid pattern | Login background | Pointer-responsive grid reveal |
 | Aurora mesh + noise overlay | Shell-level atmosphere | Deep indigo/violet/mint nebula glow |
