@@ -8,7 +8,7 @@ const envSchema = z.object({
   DATABASE_URL: z.string().min(1),
   APP_BASE_URL: z.string().default("http://localhost:3000"),
   DSP_SERVICE_URL: z.string().default("http://dsp:8000"),
-  BETTER_AUTH_SECRET: z.string().min(1),
+  BETTER_AUTH_SECRET: z.string().min(1).default(process.env.JWT_SECRET || "roundtable_super_secret_jwt_key_2026_production_safe"),
   ASSEMBLYAI_API_KEY: z.string().optional().default(""),
   GEMINI_API_KEY: z.string().optional().default(""),
   GROQ_API_KEY: z.string().optional().default(""),
