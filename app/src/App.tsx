@@ -1116,7 +1116,8 @@ function App() {
                     </div>
                     <audio
                       ref={audioRef}
-                      src={`/api/sessions/${activeSessionId}/audio`}
+                      src={`${import.meta.env.VITE_API_URL || ""}/api/sessions/${activeSessionId}/audio`}
+                      crossOrigin="use-credentials"
                       onTimeUpdate={handleTimeUpdate}
                       onPlay={() => setIsPlaying(true)}
                       onPause={() => setIsPlaying(false)}

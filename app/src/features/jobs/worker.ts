@@ -1,3 +1,4 @@
+import fs from "fs";
 import { prisma } from "../../lib/db.js";
 import { env } from "../../lib/env.js";
 import { AssemblyAI } from "assemblyai";
@@ -84,7 +85,8 @@ async function handleTranscriptionJob(job: any) {
   // Real path using AssemblyAI with fallback resilience
   try {
     console.log(`Uploading audio for session ${session.id} to AssemblyAI (${session.audio_local_path})...`);
-    const uploadUrl = await client.files.upload(session.audio_local_path);
+    const audioBuffer = fs.readFileSync(session.audio_local_path);
+    const uploadUrl = await client.files.upload(audioBuffer);
     await prisma.session.update({
       where: { id: session.id },
       data: { transcription_source: "assemblyai" },
