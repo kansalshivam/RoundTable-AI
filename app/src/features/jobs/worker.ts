@@ -177,33 +177,28 @@ async function handleDspAnalysisJob(job: any) {
   }
 
   if (!dspData) {
-    console.warn("DSP service unreachable after 3 attempts. Utilizing fallback acoustic signal metrics.");
-    dspData = {
-      session: {
-        silence_ratio: 0.15,
-        waveform_png_path: `${session.audio_local_path}_waveform.png`,
-        spectrogram_png_path: `${session.audio_local_path}_spectrogram.png`,
-      },
-      speakers: session.participants.map((p, idx) => ({
-        participant_id: p.id,
-        pitch_mean_hz: 175 + idx * 15,
-        pitch_range_semitones: 4.5,
-        energy_rms_mean: 0.045,
-        energy_rms_std: 0.012,
-        pause_count: 2,
-        avg_pause_ms: 450,
-      })),
-    };
+    throw new Error("DSP service unreachable after 3 attempts. Cannot generate real acoustic metrics.");
   }
 
-  // 2. Update session with silences and PNG graphics paths
+  // 2. Update session with silences and PNG graphics paths + persist PNG binaries to DB
+  const updateData: any = {
+    session_silence_ratio: dspData.session.silence_ratio,
+    session_waveform_png_path: dspData.session.waveform_png_path,
+    session_spectrogram_png_path: dspData.session.spectrogram_png_path,
+  };
+
+  // Persist waveform PNG binary to PostgreSQL
+  if (dspData.session.waveform_png_path && fs.existsSync(dspData.session.waveform_png_path)) {
+    updateData.session_waveform_png_data = fs.readFileSync(dspData.session.waveform_png_path);
+  }
+  // Persist spectrogram PNG binary to PostgreSQL
+  if (dspData.session.spectrogram_png_path && fs.existsSync(dspData.session.spectrogram_png_path)) {
+    updateData.session_spectrogram_png_data = fs.readFileSync(dspData.session.spectrogram_png_path);
+  }
+
   await prisma.session.update({
     where: { id: session.id },
-    data: {
-      session_silence_ratio: dspData.session.silence_ratio,
-      session_waveform_png_path: dspData.session.waveform_png_path,
-      session_spectrogram_png_path: dspData.session.spectrogram_png_path,
-    },
+    data: updateData,
   });
 
   // 3. Compute Layer C metrics and merge with Layer B metrics for each participant

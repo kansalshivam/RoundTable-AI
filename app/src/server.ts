@@ -236,10 +236,14 @@ app.post("/api/sessions/:id/upload", requireAuth, upload.single("audio"), async 
     await normalizeToWav16kMono(rawPath, finalPath);
     fs.unlinkSync(rawPath);
 
+    // Read normalized WAV into memory and store in PostgreSQL for persistence
+    const audioBuffer = fs.readFileSync(finalPath);
+
     await prisma.session.update({
       where: { id },
       data: {
         audio_local_path: finalPath,
+        audio_data: audioBuffer,
         recording_source: source,
         original_filename: req.file.originalname,
         original_format: path.extname(req.file.originalname).replace(".", ""),
@@ -348,7 +352,7 @@ app.post("/api/sessions/:id/withdraw", requireAuth, async (req, res) => {
     });
 
     // 7. Delete audio files from disk
-    const sessionDir = `/data/sessions/${id}`;
+    const sessionDir = path.resolve(process.cwd(), "data/sessions", id);
     if (fs.existsSync(sessionDir)) {
       try {
         fs.rmSync(sessionDir, { recursive: true, force: true });
@@ -412,8 +416,8 @@ app.get("/api/sessions/:id/speakers/preview/:label", requireAuth, async (req, re
 
   try {
     const session = await prisma.session.findUnique({ where: { id } });
-    if (!session || !session.audio_local_path) {
-      res.status(404).json({ error: "session_or_audio_not_found" });
+    if (!session) {
+      res.status(404).json({ error: "session_not_found" });
       return;
     }
 
@@ -427,7 +431,22 @@ app.get("/api/sessions/:id/speakers/preview/:label", requireAuth, async (req, re
       return;
     }
 
-    const previewDir = path.resolve(process.cwd(), "data/sessions", id, "previews");
+    // Ensure audio source file exists on disk (restore from DB if needed)
+    const sessionDir = path.resolve(process.cwd(), "data/sessions", id);
+    fs.mkdirSync(sessionDir, { recursive: true });
+    const audioPath = path.join(sessionDir, "recording.wav");
+
+    if (!fs.existsSync(audioPath)) {
+      if (session.audio_data) {
+        fs.writeFileSync(audioPath, Buffer.from(session.audio_data));
+        console.log(`Restored audio from DB to disk for session ${id}`);
+      } else {
+        res.status(404).json({ error: "audio_not_available" });
+        return;
+      }
+    }
+
+    const previewDir = path.join(sessionDir, "previews");
     fs.mkdirSync(previewDir, { recursive: true });
     const previewPath = path.join(previewDir, `preview_${label}.wav`);
 
@@ -436,7 +455,7 @@ app.get("/api/sessions/:id/speakers/preview/:label", requireAuth, async (req, re
       const durationSec = Math.min(Math.max((firstUtt.end_ms - firstUtt.start_ms) / 1000, 1.5), 5);
 
       await new Promise<void>((resolve, reject) => {
-        ffmpeg(session.audio_local_path!)
+        ffmpeg(audioPath)
           .setStartTime(startSec)
           .setDuration(durationSec)
           .outputOptions("-y")
@@ -503,17 +522,26 @@ app.get("/api/sessions/:id/audio", requireAuth, async (req, res) => {
 
   try {
     const session = await prisma.session.findUnique({ where: { id } });
-    if (!session || !session.audio_local_path) {
-      res.status(404).json({ error: "session_or_audio_not_found" });
+    if (!session) {
+      res.status(404).json({ error: "session_not_found" });
       return;
     }
 
-    if (!fs.existsSync(session.audio_local_path)) {
-      res.status(404).json({ error: "audio_file_not_found_on_disk" });
+    // Priority 1: Serve from local disk if file exists (during active processing)
+    if (session.audio_local_path && fs.existsSync(session.audio_local_path)) {
+      res.sendFile(session.audio_local_path);
       return;
     }
 
-    res.sendFile(session.audio_local_path);
+    // Priority 2: Serve from PostgreSQL binary (persists across Render restarts)
+    if (session.audio_data) {
+      res.setHeader("Content-Type", "audio/wav");
+      res.setHeader("Content-Length", session.audio_data.length.toString());
+      res.send(Buffer.from(session.audio_data));
+      return;
+    }
+
+    res.status(404).json({ error: "audio_not_available" });
   } catch (error) {
     console.error("Failed to stream session audio", error);
     res.status(500).json({ error: "internal_server_error" });
@@ -714,8 +742,16 @@ app.get("/api/sessions/:id/plots/waveform", requireAuth, async (req, res) => {
       return;
     }
 
+    // Priority 1: Serve from disk
     if (session.session_waveform_png_path && fs.existsSync(session.session_waveform_png_path)) {
       res.sendFile(session.session_waveform_png_path);
+      return;
+    }
+
+    // Priority 2: Serve from DB binary
+    if (session.session_waveform_png_data) {
+      res.setHeader("Content-Type", "image/png");
+      res.send(Buffer.from(session.session_waveform_png_data));
       return;
     }
 
@@ -737,8 +773,16 @@ app.get("/api/sessions/:id/plots/spectrogram", requireAuth, async (req, res) => 
       return;
     }
 
+    // Priority 1: Serve from disk
     if (session.session_spectrogram_png_path && fs.existsSync(session.session_spectrogram_png_path)) {
       res.sendFile(session.session_spectrogram_png_path);
+      return;
+    }
+
+    // Priority 2: Serve from DB binary
+    if (session.session_spectrogram_png_data) {
+      res.setHeader("Content-Type", "image/png");
+      res.send(Buffer.from(session.session_spectrogram_png_data));
       return;
     }
 

@@ -15,23 +15,7 @@ function isRateLimitError(err: any): boolean {
 
 export async function scoreParticipant(prompt: { system: string; user: string }) {
   if (!env.GEMINI_API_KEY && !env.GROQ_API_KEY) {
-      console.log("No GEMINI_API_KEY or GROQ_API_KEY provided. Using mock LLM response...");
-      await new Promise(resolve => setTimeout(resolve, 2000)); // Simulate network latency
-      return {
-        raw: JSON.stringify({
-          topic_relevance_score: 85,
-          topic_relevance_rationale: "[Mock] Student consistently referred back to the core discussion topic.",
-          initiative_engagement_score: 90,
-          initiative_engagement_rationale: "[Mock] High participation and frequently initiated new sub-topics.",
-          coherence_structure_score: 80,
-          coherence_structure_rationale: "[Mock] Generally clear, though some points were slightly fragmented.",
-          responsiveness_score: 88,
-          responsiveness_rationale: "[Mock] Addressed other participants effectively and built on their ideas.",
-          communication_summary_strengths: ["High engagement", "Good active listening"],
-          communication_summary_improvements: ["Could structure complex arguments better"]
-        }),
-        provider: "mock" as const
-      };
+    throw new Error("SCORING FAILED: Neither GEMINI_API_KEY nor GROQ_API_KEY is configured. Cannot generate real scores.");
   }
 
   try {
