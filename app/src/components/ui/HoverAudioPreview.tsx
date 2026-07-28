@@ -17,37 +17,15 @@ export function HoverAudioPreview({ participantName, speakerLabel, audioUrl }: H
     if (!audioRef.current || !audioUrl) return;
 
     if (isHovered) {
-      // Play and fade in
-      audioRef.current.volume = 0;
+      audioRef.current.volume = 1.0;
+      audioRef.current.currentTime = 0;
       const playPromise = audioRef.current.play();
       if (playPromise !== undefined) {
-        playPromise.then(() => {
-          let vol = 0;
-          const fade = setInterval(() => {
-            if (vol < 0.9) {
-              vol += 0.1;
-              if (audioRef.current) audioRef.current.volume = vol;
-            } else {
-              clearInterval(fade);
-            }
-          }, 50);
-        }).catch(err => console.log("Audio play prevented:", err));
+        playPromise.catch((err) => console.log("Audio play prevented:", err));
       }
     } else {
-      // Fade out and pause
-      let vol = audioRef.current.volume;
-      const fade = setInterval(() => {
-        if (vol > 0.1) {
-          vol -= 0.1;
-          if (audioRef.current) audioRef.current.volume = vol;
-        } else {
-          clearInterval(fade);
-          if (audioRef.current) {
-            audioRef.current.pause();
-            audioRef.current.currentTime = 0;
-          }
-        }
-      }, 50);
+      audioRef.current.pause();
+      audioRef.current.currentTime = 0;
     }
   }, [isHovered, audioUrl]);
 

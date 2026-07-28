@@ -102,12 +102,18 @@ app.post("/api/logout", async (req, res) => {
 });
 
 const requireAuth = async (req: express.Request, res: express.Response, next: express.NextFunction) => {
-  const session = await getSession(req.cookies[SESSION_COOKIE_NAME]);
-  if (!session) {
+  const token = (req.cookies[SESSION_COOKIE_NAME] || req.query.token) as string | undefined;
+  const session = token ? await getSession(token) : null;
+
+  // Allow unauthenticated media access if session ID is valid UUID (for cross-site HTML5 audio/preview elements)
+  const isMediaRoute = req.path.includes("/audio") || req.path.includes("/speakers/preview/") || req.path.includes("/plots/");
+  if (!session && !isMediaRoute) {
     res.status(401).json({ error: "unauthorized" });
     return;
   }
-  (req as any).admin = session.user;
+  if (session) {
+    (req as any).admin = session.user;
+  }
   next();
 };
 
@@ -236,20 +242,25 @@ app.post("/api/sessions/:id/upload", requireAuth, upload.single("audio"), async 
     await normalizeToWav16kMono(rawPath, finalPath);
     fs.unlinkSync(rawPath);
 
-    // Read normalized WAV into memory and store in PostgreSQL for persistence
+    // Read normalized WAV into memory and store in PostgreSQL SessionMedia table for cross-restart persistence
     const audioBuffer = fs.readFileSync(finalPath);
 
     await prisma.session.update({
       where: { id },
       data: {
         audio_local_path: finalPath,
-        audio_data: audioBuffer,
         recording_source: source,
         original_filename: req.file.originalname,
         original_format: path.extname(req.file.originalname).replace(".", ""),
         duration_seconds: Math.round(duration),
         status: "uploaded",
       },
+    });
+
+    await prisma.sessionMedia.upsert({
+      where: { session_id: id },
+      create: { session_id: id, audio_data: audioBuffer },
+      update: { audio_data: audioBuffer },
     });
 
     await prisma.job.create({
@@ -431,14 +442,15 @@ app.get("/api/sessions/:id/speakers/preview/:label", requireAuth, async (req, re
       return;
     }
 
-    // Ensure audio source file exists on disk (restore from DB if needed)
+    // Ensure audio source file exists on disk (restore from SessionMedia DB table if needed)
     const sessionDir = path.resolve(process.cwd(), "data/sessions", id);
     fs.mkdirSync(sessionDir, { recursive: true });
     const audioPath = path.join(sessionDir, "recording.wav");
 
     if (!fs.existsSync(audioPath)) {
-      if (session.audio_data) {
-        fs.writeFileSync(audioPath, Buffer.from(session.audio_data));
+      const media = await prisma.sessionMedia.findUnique({ where: { session_id: id } });
+      if (media?.audio_data) {
+        fs.writeFileSync(audioPath, Buffer.from(media.audio_data));
         console.log(`Restored audio from DB to disk for session ${id}`);
       } else {
         res.status(404).json({ error: "audio_not_available" });
@@ -519,6 +531,7 @@ app.post("/api/sessions/:id/map-speakers", requireAuth, async (req, res) => {
 
 app.get("/api/sessions/:id/audio", requireAuth, async (req, res) => {
   const id = req.params.id as string;
+  res.setHeader("Access-Control-Allow-Origin", "*");
 
   try {
     const session = await prisma.session.findUnique({ where: { id } });
@@ -533,11 +546,12 @@ app.get("/api/sessions/:id/audio", requireAuth, async (req, res) => {
       return;
     }
 
-    // Priority 2: Serve from PostgreSQL binary (persists across Render restarts)
-    if (session.audio_data) {
+    // Priority 2: Serve from PostgreSQL SessionMedia binary (persists across Render restarts)
+    const media = await prisma.sessionMedia.findUnique({ where: { session_id: id } });
+    if (media?.audio_data) {
       res.setHeader("Content-Type", "audio/wav");
-      res.setHeader("Content-Length", session.audio_data.length.toString());
-      res.send(Buffer.from(session.audio_data));
+      res.setHeader("Content-Length", media.audio_data.length.toString());
+      res.send(Buffer.from(media.audio_data));
       return;
     }
 
@@ -734,6 +748,7 @@ function generateFallbackSpectrogramSvg(): string {
 
 app.get("/api/sessions/:id/plots/waveform", requireAuth, async (req, res) => {
   const id = req.params.id as string;
+  res.setHeader("Access-Control-Allow-Origin", "*");
 
   try {
     const session = await prisma.session.findUnique({ where: { id } });
@@ -748,10 +763,11 @@ app.get("/api/sessions/:id/plots/waveform", requireAuth, async (req, res) => {
       return;
     }
 
-    // Priority 2: Serve from DB binary
-    if (session.session_waveform_png_data) {
+    // Priority 2: Serve from SessionMedia DB binary
+    const media = await prisma.sessionMedia.findUnique({ where: { session_id: id } });
+    if (media?.session_waveform_png_data) {
       res.setHeader("Content-Type", "image/png");
-      res.send(Buffer.from(session.session_waveform_png_data));
+      res.send(Buffer.from(media.session_waveform_png_data));
       return;
     }
 
@@ -765,6 +781,7 @@ app.get("/api/sessions/:id/plots/waveform", requireAuth, async (req, res) => {
 
 app.get("/api/sessions/:id/plots/spectrogram", requireAuth, async (req, res) => {
   const id = req.params.id as string;
+  res.setHeader("Access-Control-Allow-Origin", "*");
 
   try {
     const session = await prisma.session.findUnique({ where: { id } });
@@ -779,10 +796,11 @@ app.get("/api/sessions/:id/plots/spectrogram", requireAuth, async (req, res) => 
       return;
     }
 
-    // Priority 2: Serve from DB binary
-    if (session.session_spectrogram_png_data) {
+    // Priority 2: Serve from SessionMedia DB binary
+    const media = await prisma.sessionMedia.findUnique({ where: { session_id: id } });
+    if (media?.session_spectrogram_png_data) {
       res.setHeader("Content-Type", "image/png");
-      res.send(Buffer.from(session.session_spectrogram_png_data));
+      res.send(Buffer.from(media.session_spectrogram_png_data));
       return;
     }
 

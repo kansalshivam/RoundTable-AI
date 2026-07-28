@@ -180,26 +180,31 @@ async function handleDspAnalysisJob(job: any) {
     throw new Error("DSP service unreachable after 3 attempts. Cannot generate real acoustic metrics.");
   }
 
-  // 2. Update session with silences and PNG graphics paths + persist PNG binaries to DB
-  const updateData: any = {
-    session_silence_ratio: dspData.session.silence_ratio,
-    session_waveform_png_path: dspData.session.waveform_png_path,
-    session_spectrogram_png_path: dspData.session.spectrogram_png_path,
-  };
-
-  // Persist waveform PNG binary to PostgreSQL
-  if (dspData.session.waveform_png_path && fs.existsSync(dspData.session.waveform_png_path)) {
-    updateData.session_waveform_png_data = fs.readFileSync(dspData.session.waveform_png_path);
-  }
-  // Persist spectrogram PNG binary to PostgreSQL
-  if (dspData.session.spectrogram_png_path && fs.existsSync(dspData.session.spectrogram_png_path)) {
-    updateData.session_spectrogram_png_data = fs.readFileSync(dspData.session.spectrogram_png_path);
-  }
-
+  // 2. Update session with silences and PNG graphics paths + persist PNG binaries to SessionMedia table
   await prisma.session.update({
     where: { id: session.id },
-    data: updateData,
+    data: {
+      session_silence_ratio: dspData.session.silence_ratio,
+      session_waveform_png_path: dspData.session.waveform_png_path,
+      session_spectrogram_png_path: dspData.session.spectrogram_png_path,
+    },
   });
+
+  const mediaUpdate: any = {};
+  if (dspData.session.waveform_png_path && fs.existsSync(dspData.session.waveform_png_path)) {
+    mediaUpdate.session_waveform_png_data = fs.readFileSync(dspData.session.waveform_png_path);
+  }
+  if (dspData.session.spectrogram_png_path && fs.existsSync(dspData.session.spectrogram_png_path)) {
+    mediaUpdate.session_spectrogram_png_data = fs.readFileSync(dspData.session.spectrogram_png_path);
+  }
+
+  if (Object.keys(mediaUpdate).length > 0) {
+    await prisma.sessionMedia.upsert({
+      where: { session_id: session.id },
+      create: { session_id: session.id, ...mediaUpdate },
+      update: mediaUpdate,
+    });
+  }
 
   // 3. Compute Layer C metrics and merge with Layer B metrics for each participant
   for (const participant of session.participants) {

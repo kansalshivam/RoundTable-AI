@@ -86,7 +86,6 @@ model Session {
   scheduled_at                 DateTime?       @db.Timestamptz(6)
   status                       String          @default("created")
   audio_local_path             String?
-  audio_data                   Bytes?
   recording_source             String          @default("live")
   transcription_source         String?
   original_filename            String?
@@ -97,9 +96,7 @@ model Session {
   expected_speaker_count       Int
   speaker_count_mismatch       Boolean         @default(false)
   session_waveform_png_path    String?
-  session_waveform_png_data    Bytes?
   session_spectrogram_png_path String?
-  session_spectrogram_png_data Bytes?
   session_silence_ratio        Decimal?
   created_at                   DateTime        @default(now()) @db.Timestamptz(6)
   creator                      AdminProfile    @relation(fields: [created_by], references: [id])
@@ -109,9 +106,20 @@ model Session {
   scores                       Score[]
   jobs                         Job[]
   consent_records              ConsentRecord[]
+  media                        SessionMedia?
 
   @@index([status])
   @@map("sessions")
+}
+
+model SessionMedia {
+  session_id                 String   @id @db.Uuid
+  audio_data                 Bytes?
+  session_waveform_png_data  Bytes?
+  session_spectrogram_png_data Bytes?
+  session                    Session  @relation(fields: [session_id], references: [id], onDelete: Cascade)
+
+  @@map("session_media")
 }
 
 model Participant {
