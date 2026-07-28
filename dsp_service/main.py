@@ -5,6 +5,7 @@ import io
 import base64
 import tempfile
 import soundfile as sf
+import urllib.request
 
 from analysis import (
     load_audio_16k_mono,
@@ -29,6 +30,7 @@ class AnalyzeRequest(BaseModel):
     session_id: str
     audio_path: str | None = None
     audio_base64: str | None = None
+    audio_url: str | None = None
     speakers: list[SpeakerRequest]
 
 @app.api_route("/health", methods=["GET", "HEAD"])
@@ -39,7 +41,15 @@ async def health():
 async def analyze(req: AnalyzeRequest):
     temp_file_path = None
     try:
-        if req.audio_base64:
+        if req.audio_url:
+            # Download audio WAV stream directly from backend API
+            tmp = tempfile.NamedTemporaryFile(delete=False, suffix=".wav")
+            with urllib.request.urlopen(req.audio_url) as resp:
+                tmp.write(resp.read())
+            tmp.close()
+            temp_file_path = tmp.name
+            target_path = temp_file_path
+        elif req.audio_base64:
             # Decode base64 WAV audio bytes into a temporary WAV file
             raw_bytes = base64.b64decode(req.audio_base64)
             tmp = tempfile.NamedTemporaryFile(delete=False, suffix=".wav")
@@ -50,7 +60,7 @@ async def analyze(req: AnalyzeRequest):
         elif req.audio_path and os.path.exists(req.audio_path):
             target_path = req.audio_path
         else:
-            raise HTTPException(status_code=400, detail="Neither valid audio_path nor audio_base64 provided")
+            raise HTTPException(status_code=400, detail="Neither valid audio_path, audio_url, nor audio_base64 provided")
 
         y, sr = load_audio_16k_mono(target_path)
         out_dir = tempfile.mkdtemp()

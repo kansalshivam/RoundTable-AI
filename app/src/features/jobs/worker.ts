@@ -124,8 +124,6 @@ async function handleDspAnalysisJob(job: any) {
     throw new Error("Session audio binary is missing from both local disk and database, cannot perform DSP analysis");
   }
 
-  const audioBase64 = audioBuffer.toString("base64");
-
   // 2. Prepare speakers payload for Python VAD/pitch/energy extraction
   const speakersPayload = session.participants
     .filter((p) => p.speaker_label)
@@ -142,12 +140,18 @@ async function handleDspAnalysisJob(job: any) {
       };
     });
 
-  const analyzeBody = {
+  const audioUrl = `${env.APP_BASE_URL}/api/sessions/${session.id}/audio`;
+  const analyzeBody: any = {
     session_id: session.id,
+    audio_url: audioUrl,
     audio_path: session.audio_local_path || undefined,
-    audio_base64: audioBase64,
     speakers: speakersPayload,
   };
+
+  // Only attach base64 string if file is small (<2MB) to prevent 10MB proxy payload errors
+  if (audioBuffer.length < 2 * 1024 * 1024) {
+    analyzeBody.audio_base64 = audioBuffer.toString("base64");
+  }
 
   let dspData: {
     session: {
