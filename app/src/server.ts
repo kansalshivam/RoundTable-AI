@@ -105,8 +105,9 @@ const requireAuth = async (req: express.Request, res: express.Response, next: ex
   const token = (req.cookies[SESSION_COOKIE_NAME] || req.query.token) as string | undefined;
   const session = token ? await getSession(token) : null;
 
-  // Allow unauthenticated media access if session ID is valid UUID (for cross-site HTML5 audio/preview elements)
-  const isMediaRoute = req.path.includes("/audio") || req.path.includes("/speakers/preview/") || req.path.includes("/plots/");
+  // Allow unauthenticated media access if session ID is valid (for cross-site HTML5 audio/preview elements)
+  const urlPath = req.originalUrl || req.path || req.url || "";
+  const isMediaRoute = urlPath.includes("/audio") || urlPath.includes("/speakers/preview/") || urlPath.includes("/plots/");
   if (!session && !isMediaRoute) {
     res.status(401).json({ error: "unauthorized" });
     return;
