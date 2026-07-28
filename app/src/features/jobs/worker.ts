@@ -109,11 +109,24 @@ async function handleDspAnalysisJob(job: any) {
     throw new Error("Session not found for DSP analysis");
   }
 
-  if (!session.audio_local_path) {
-    throw new Error("Session audio path is missing, cannot perform DSP analysis");
+  // 1. Obtain audio buffer (from local disk or from PostgreSQL SessionMedia)
+  let audioBuffer: Buffer | null = null;
+  if (session.audio_local_path && fs.existsSync(session.audio_local_path)) {
+    audioBuffer = fs.readFileSync(session.audio_local_path);
+  } else {
+    const media = await prisma.sessionMedia.findUnique({ where: { session_id: session.id } });
+    if (media?.audio_data) {
+      audioBuffer = Buffer.from(media.audio_data);
+    }
   }
 
-  // 1. Prepare speakers payload for Python VAD/pitch/energy extraction
+  if (!audioBuffer) {
+    throw new Error("Session audio binary is missing from both local disk and database, cannot perform DSP analysis");
+  }
+
+  const audioBase64 = audioBuffer.toString("base64");
+
+  // 2. Prepare speakers payload for Python VAD/pitch/energy extraction
   const speakersPayload = session.participants
     .filter((p) => p.speaker_label)
     .map((p) => {
@@ -131,7 +144,8 @@ async function handleDspAnalysisJob(job: any) {
 
   const analyzeBody = {
     session_id: session.id,
-    audio_path: session.audio_local_path,
+    audio_path: session.audio_local_path || undefined,
+    audio_base64: audioBase64,
     speakers: speakersPayload,
   };
 
@@ -140,6 +154,8 @@ async function handleDspAnalysisJob(job: any) {
       silence_ratio: number;
       waveform_png_path: string;
       spectrogram_png_path: string;
+      waveform_png_base64?: string;
+      spectrogram_png_base64?: string;
     };
     speakers: Array<{
       participant_id: string;
@@ -155,6 +171,7 @@ async function handleDspAnalysisJob(job: any) {
   const dspUrl = `${env.DSP_SERVICE_URL}/analyze`;
   console.log(`Sending DSP analysis request for session ${session.id} to ${dspUrl}...`);
 
+  let lastDspError = "";
   for (let attempt = 1; attempt <= 3; attempt++) {
     try {
       const response = await fetch(dspUrl, {
@@ -167,20 +184,26 @@ async function handleDspAnalysisJob(job: any) {
         dspData = (await response.json()) as any;
         console.log(`DSP analysis completed on attempt ${attempt}.`);
         break;
+      } else {
+        const errorText = await response.text();
+        lastDspError = `HTTP ${response.status}: ${errorText}`;
+        console.warn(`DSP service attempt ${attempt}/3 returned HTTP error: ${lastDspError}`);
       }
     } catch (err: any) {
-      console.warn(`DSP service attempt ${attempt}/3 failed: ${err?.message || err}`);
-      if (attempt < 3) {
-        await new Promise((r) => setTimeout(r, 3000));
-      }
+      lastDspError = err?.message || String(err);
+      console.warn(`DSP service attempt ${attempt}/3 network error: ${lastDspError}`);
+    }
+
+    if (attempt < 3) {
+      await new Promise((r) => setTimeout(r, 3000));
     }
   }
 
   if (!dspData) {
-    throw new Error("DSP service unreachable after 3 attempts. Cannot generate real acoustic metrics.");
+    throw new Error(`DSP service failed after 3 attempts. Detail: ${lastDspError || "Unreachable"}`);
   }
 
-  // 2. Update session with silences and PNG graphics paths + persist PNG binaries to SessionMedia table
+  // 3. Update session with silences and PNG graphics paths + persist PNG binaries to SessionMedia table
   await prisma.session.update({
     where: { id: session.id },
     data: {
@@ -191,10 +214,15 @@ async function handleDspAnalysisJob(job: any) {
   });
 
   const mediaUpdate: any = {};
-  if (dspData.session.waveform_png_path && fs.existsSync(dspData.session.waveform_png_path)) {
+  if (dspData.session.waveform_png_base64) {
+    mediaUpdate.session_waveform_png_data = Buffer.from(dspData.session.waveform_png_base64, "base64");
+  } else if (dspData.session.waveform_png_path && fs.existsSync(dspData.session.waveform_png_path)) {
     mediaUpdate.session_waveform_png_data = fs.readFileSync(dspData.session.waveform_png_path);
   }
-  if (dspData.session.spectrogram_png_path && fs.existsSync(dspData.session.spectrogram_png_path)) {
+
+  if (dspData.session.spectrogram_png_base64) {
+    mediaUpdate.session_spectrogram_png_data = Buffer.from(dspData.session.spectrogram_png_base64, "base64");
+  } else if (dspData.session.spectrogram_png_path && fs.existsSync(dspData.session.spectrogram_png_path)) {
     mediaUpdate.session_spectrogram_png_data = fs.readFileSync(dspData.session.spectrogram_png_path);
   }
 
